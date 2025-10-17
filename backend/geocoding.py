@@ -21,9 +21,11 @@ class InternationalGeocoder:
             async with httpx.AsyncClient() as client:
                 params = {
                     "q": location_query,
-                    "format": "json",
+                    "format": "jsonv2",  # Use jsonv2 format for better bounding box support
                     "limit": 1,
-                    "addressdetails": 1
+                    "addressdetails": 1,
+                    "extratags": 1,  # Include additional information
+                    "namedetails": 1  # Include name details
                 }
                 
                 if country_code:
@@ -40,12 +42,34 @@ class InternationalGeocoder:
                     data = response.json()
                     if data and len(data) > 0:
                         result = data[0]
+                        
+                        # Parse bounding box from jsonv2 format
+                        bbox = None
+                        if "boundingbox" in result:
+                            bbox_list = result["boundingbox"]
+                            if len(bbox_list) == 4:
+                                # boundingbox format: [min_lat, max_lat, min_lon, max_lon]
+                                bbox = {
+                                    "min_lat": float(bbox_list[0]),
+                                    "max_lat": float(bbox_list[1]),
+                                    "min_lon": float(bbox_list[2]),
+                                    "max_lon": float(bbox_list[3])
+                                }
+                        
                         geocoded_result = {
                             "lat": float(result["lat"]),
                             "lng": float(result["lon"]),
                             "display_name": result["display_name"],
                             "address": result.get("address", {}),
-                            "success": True
+                            "success": True,
+                            "bbox": bbox,
+                            "boundingbox": result.get("boundingbox", []),  # Raw bounding box array
+                            "place_id": result.get("place_id"),
+                            "osm_type": result.get("osm_type"),
+                            "osm_id": result.get("osm_id"),
+                            "importance": result.get("importance"),
+                            "class": result.get("class"),
+                            "type": result.get("type")
                         }
                         # Cache the result
                         self._cache[cache_key] = geocoded_result
@@ -96,6 +120,83 @@ class InternationalGeocoder:
             "address": {},
             "success": False
         }
+
+    async def geocode_area_with_bbox(self, area_query: str, country_code: str = None) -> Dict:
+        """Geocode an area (city, state, country) and get its bounding box"""
+        cache_key = f"area:{area_query}:{country_code or 'None'}"
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+        
+        try:
+            async with httpx.AsyncClient() as client:
+                params = {
+                    "q": area_query,
+                    "format": "jsonv2",
+                    "limit": 1,
+                    "addressdetails": 1,
+                    "extratags": 1,
+                    "namedetails": 1,
+                    "polygon_geojson": 1,  # Request GeoJSON polygon for areas
+                    "polygon_threshold": 0.0  # Get detailed polygon
+                }
+                
+                if country_code:
+                    params["countrycodes"] = country_code
+                
+                response = await client.get(
+                    self.base_url + "/search",
+                    headers=self.headers,
+                    params=params,
+                    timeout=10.0
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if data and len(data) > 0:
+                        result = data[0]
+                        
+                        # Parse bounding box
+                        bbox = None
+                        if "boundingbox" in result:
+                            bbox_list = result["boundingbox"]
+                            if len(bbox_list) == 4:
+                                bbox = {
+                                    "min_lat": float(bbox_list[0]),
+                                    "max_lat": float(bbox_list[1]),
+                                    "min_lon": float(bbox_list[2]),
+                                    "max_lon": float(bbox_list[3])
+                                }
+                        
+                        area_result = {
+                            "lat": float(result["lat"]),
+                            "lng": float(result["lon"]),
+                            "display_name": result["display_name"],
+                            "address": result.get("address", {}),
+                            "success": True,
+                            "bbox": bbox,
+                            "boundingbox": result.get("boundingbox", []),
+                            "place_id": result.get("place_id"),
+                            "osm_type": result.get("osm_type"),
+                            "osm_id": result.get("osm_id"),
+                            "importance": result.get("importance"),
+                            "class": result.get("class"),
+                            "type": result.get("type"),
+                            "geojson": result.get("geojson")  # GeoJSON polygon if available
+                        }
+                        
+                        self._cache[cache_key] = area_result
+                        return area_result
+                
+                # Fallback
+                fallback_result = self._get_fallback_coordinates(country_code)
+                self._cache[cache_key] = fallback_result
+                return fallback_result
+                
+        except Exception as e:
+            print(f"Area geocoding error for '{area_query}': {e}")
+            fallback_result = self._get_fallback_coordinates(country_code)
+            self._cache[cache_key] = fallback_result
+            return fallback_result
 
     async def geocode_multiple(self, locations: list, country_code: str = None) -> list:
         """Geocode multiple locations in parallel"""

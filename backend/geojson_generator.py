@@ -38,31 +38,49 @@ class GeoJSONPipeline:
                 country_code=query_params.get("country")
             )
             
-            # Step 3: Build GeoJSON FeatureCollection
+            # Step 3: Build GeoJSON FeatureCollection with multiple points per region
             features = []
             for i, location in enumerate(locations):
                 if i < len(geocoded_results):
                     geocoded = geocoded_results[i]
                     
                     if geocoded.get("success", False) or geocoded.get("lat") is not None:
-                        feature = {
-                            "type": "Feature",
-                            "geometry": {
-                                "type": "Point",
-                                "coordinates": [geocoded["lng"], geocoded["lat"]]
-                            },
-                            "properties": {
-                                "name": location.name,
-                                "area_code": location.area_code,
-                                "borough": location.borough,
-                                "country": location.country,
-                                "description": location.description,
-                                "target_fit": location.target_audience_fit,
-                                "weight": location.fitness_score,
-                                "display_name": geocoded.get("display_name", location.name)
+                        # Create multiple points around the main location to simulate region coverage
+                        base_lat = geocoded["lat"]
+                        base_lng = geocoded["lng"]
+                        
+                        # Generate 8-12 points around the main location to create heatmap density
+                        import random
+                        num_points = random.randint(8, 12)
+                        
+                        for j in range(num_points):
+                            # Create a small random offset (within ~2km radius)
+                            lat_offset = random.uniform(-0.02, 0.02)  # ~2km
+                            lng_offset = random.uniform(-0.02, 0.02)  # ~2km
+                            
+                            # Vary the weight slightly for each point
+                            weight_variation = random.uniform(0.8, 1.2)
+                            point_weight = location.fitness_score * weight_variation
+                            
+                            feature = {
+                                "type": "Feature",
+                                "geometry": {
+                                    "type": "Point",
+                                    "coordinates": [base_lng + lng_offset, base_lat + lat_offset]
+                                },
+                                "properties": {
+                                    "name": location.name,
+                                    "area_code": location.area_code,
+                                    "borough": location.borough,
+                                    "country": location.country,
+                                    "description": location.description,
+                                    "target_fit": location.target_audience_fit,
+                                    "weight": point_weight,
+                                    "display_name": geocoded.get("display_name", location.name),
+                                    "is_primary": j == 0  # Mark the first point as primary
+                                }
                             }
-                        }
-                        features.append(feature)
+                            features.append(feature)
             
             return {
                 "type": "FeatureCollection",
