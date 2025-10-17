@@ -1,11 +1,16 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import List, Optional, Dict
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 from perplexity_client import PerplexityAudienceAnalyzer
 from geocoding import InternationalGeocoder
 from geojson_generator import GeoJSONPipeline
+
+# Import cofounder finder function
+from cofounder import find_cofounders_api
 
 # Load environment variables
 load_dotenv()
@@ -25,9 +30,41 @@ perplexity_client = PerplexityAudienceAnalyzer()
 geocoder = InternationalGeocoder()
 pipeline = GeoJSONPipeline(perplexity_client, geocoder)
 
+# Pydantic models for cofounder endpoint
+class CofounderRequest(BaseModel):
+    idea: str
+    max_results: Optional[int] = 20
+    include_coordinates: Optional[bool] = True
+
+class Coordinates(BaseModel):
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
+class Founder(BaseModel):
+    name: str
+    location: str
+    links: List[str]
+    coordinates: Optional[Coordinates] = None
+    match_score: int
+
+class CofounderResponse(BaseModel):
+    success: bool
+    domain: str
+    total_found: int
+    cofounders: List[Founder]
+    timestamp: str
+    summary: Dict
+
 @app.get("/")
 async def root():
-    return {"message": "Startup Sonar API", "version": "1.0.0"}
+    return {
+        "message": "Startup Sonar API", 
+        "version": "1.0.0",
+        "endpoints": {
+            "/audience-map": "Generate GeoJSON heatmap of target audience locations",
+            "/find-cofounders": "Find potential cofounders for your startup idea"
+        }
+    }
 
 @app.get("/audience-map")
 async def get_audience_map(
@@ -62,6 +99,43 @@ async def get_audience_map(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating audience map: {str(e)}")
+
+@app.post("/find-cofounders", response_model=CofounderResponse)
+async def find_cofounders(request: CofounderRequest):
+    """
+    Find potential cofounders based on startup domain/idea
+    
+    Parameters:
+    - idea: Your startup domain or idea (e.g., "AI for legal technology")
+    - max_results: Maximum number of results to return (default: 20)
+    - include_coordinates: Whether to geocode locations (default: true)
+    
+    Returns:
+    - JSON with list of cofounders, sorted by match score
+    """
+    try:
+        domain = request.idea.strip()
+        if not domain:
+            raise HTTPException(status_code=400, detail="Idea/domain cannot be empty")
+        
+        # Call the cofounder finder
+        result = await find_cofounders_api(
+            domain=domain,
+            max_results=request.max_results,
+            include_coordinates=request.include_coordinates
+        )
+        
+        return CofounderResponse(
+            success=True,
+            domain=domain,
+            total_found=result["total_found"],
+            cofounders=result["cofounders"],
+            timestamp=datetime.now().isoformat(),
+            summary=result["summary"]
+        )
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error finding cofounders: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
