@@ -13,6 +13,8 @@ from geojson_generator import GeoJSONPipeline
 from cofounder import find_cofounders_api
 # Import VC finder function
 from vc import find_vcs_api
+# Import competitor finder function
+from competitors import find_competitors_api
 
 # Load environment variables
 load_dotenv()
@@ -80,6 +82,28 @@ class VCResponse(BaseModel):
     timestamp: str
     summary: Dict
 
+# Pydantic models for competitor endpoint
+class CompetitorRequest(BaseModel):
+    idea: str
+    max_results: Optional[int] = 20
+    include_coordinates: Optional[bool] = True
+
+class Competitor(BaseModel):
+    company_name: str
+    location: str
+    links: List[str]
+    date_founded: str
+    coordinates: Optional[Coordinates] = None
+    threat_score: int
+
+class CompetitorResponse(BaseModel):
+    success: bool
+    domain: str
+    total_found: int
+    competitors: List[Competitor]
+    timestamp: str
+    summary: Dict
+
 @app.get("/")
 async def root():
     return {
@@ -88,7 +112,8 @@ async def root():
         "endpoints": {
             "/audience-map": "Generate GeoJSON heatmap of target audience locations",
             "/find-cofounders": "Find potential cofounders for your startup idea",
-            "/find-vcs": "Find venture capitalists and investors for your startup"
+            "/find-vcs": "Find venture capitalists and investors for your startup",
+            "/find-competitors": "Find competing companies in your market space"
         }
     }
 
@@ -204,6 +229,43 @@ async def find_vcs(request: VCRequest):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error finding VCs: {str(e)}")
+
+@app.post("/find-competitors", response_model=CompetitorResponse)
+async def find_competitors(request: CompetitorRequest):
+    """
+    Find competing companies based on startup domain/idea
+    
+    Parameters:
+    - idea: Your startup domain or idea (e.g., "AI for legal technology")
+    - max_results: Maximum number of results to return (default: 20)
+    - include_coordinates: Whether to geocode locations (default: true)
+    
+    Returns:
+    - JSON with list of competitors, sorted by threat score
+    """
+    try:
+        domain = request.idea.strip()
+        if not domain:
+            raise HTTPException(status_code=400, detail="Idea/domain cannot be empty")
+        
+        # Call the competitor finder
+        result = await find_competitors_api(
+            domain=domain,
+            max_results=request.max_results,
+            include_coordinates=request.include_coordinates
+        )
+        
+        return CompetitorResponse(
+            success=True,
+            domain=domain,
+            total_found=result["total_found"],
+            competitors=result["competitors"],
+            timestamp=datetime.now().isoformat(),
+            summary=result["summary"]
+        )
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error finding competitors: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
