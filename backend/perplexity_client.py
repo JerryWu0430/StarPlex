@@ -58,10 +58,27 @@ class PerplexityAudienceAnalyzer:
         Focus on areas with high concentrations of the target demographic. Include at least 5-10 locations.
         """
         
+        system_prompt = """
+        You are a helpful assistant that finds locations that match a given target audience. You must return a JSON array of locations with the following structure:
+
+        [
+            {
+                "name": "Neighborhood Name",
+                "area_code": "Postal Code",
+                "borough": "Borough/District",
+                "country": "Country",
+                "description": "Neighborhood description...",
+                "target_audience_fit": "Why target audience is here...",
+                "score": 8.5
+            }
+        ]
+
+        All fields are required. You must make sure that the name, area_code, borough, country are able to be geocoded using the OpenStreetMap Nominatim API.
+        """
         try:
             response = self.client.chat.completions.create(
                 model="sonar",
-                messages=[{"role": "user", "content": prompt}],
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
                 temperature=0.7,
                 stream=False
             )
