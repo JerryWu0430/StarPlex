@@ -21,9 +21,9 @@ type AudienceCollection = FeatureCollection<Point, AudienceProps>;
 type AudienceMapProps = {
   /** FastAPI endpoint returning the GeoJSON (FeatureCollection<Point, AudienceProps>) */
   endpoint?: string;
-  /** Optional Mapbox token override (else env hardcoded fallback below) */
+  /** Optional Mapbox token override (else fallback below) */
   token?: string;
-  /** Initial Mapbox style URL */
+  /** Initial Mapbox style URL (defaults to LIGHT_STYLE = "standard" globe) */
   initialStyle?: string;
   /** Show the light/dark toggle button */
   enableThemeToggle?: boolean;
@@ -32,10 +32,14 @@ type AudienceMapProps = {
   className?: string;
 };
 
-/** ---------- Config ---------- */
-const DEFAULT_STYLE = "mapbox://styles/mapbox/streets-v12"; // <-- has 'composite' + 'building'
-const LIGHT_STYLE = "mapbox://styles/mapbox/light-v11";
+/** ---------- Styles ---------- */
+/** Light = original globe look */
+const LIGHT_STYLE = "mapbox://styles/mapbox/standard";
+/** Dark theme you like */
 const DARK_STYLE = "mapbox://styles/mapbox/dark-v11";
+
+/** Default initial style */
+const DEFAULT_STYLE = LIGHT_STYLE;
 
 /** Dev token fallback — replace with your env if you prefer */
 const envToken =
@@ -79,13 +83,19 @@ export default function AudienceMap({
     });
     mapRef.current = map;
 
-    /** Safely add 3D buildings if the style supports 'composite'/'building' */
-    const add3dBuildings = () => {
-      const style = map.getStyle();
-      const hasComposite = !!style?.sources?.["composite"];
-      if (!hasComposite) return;
+    /** Keep globe projection whenever styles load/swap */
+    const ensureGlobeProjection = () => {
+      // If you want globe for both light and dark, keep 'globe' always:
+      map.setProjection("globe");
+    };
 
-      const labelLayerId = (style.layers || []).find(
+    /** Safely add 3D buildings only for styles that expose 'composite' (e.g., light/dark/streets) */
+    const add3dBuildingsIfAvailable = () => {
+      const styleObj = map.getStyle();
+      const hasComposite = !!styleObj?.sources?.["composite"];
+      if (!hasComposite) return; // Mapbox "standard" doesn't expose 'composite'; skip to avoid errors
+
+      const labelLayerId = (styleObj.layers || []).find(
         (l: any) => l.type === "symbol" && l.layout?.["text-field"]
       )?.id;
 
@@ -124,16 +134,18 @@ export default function AudienceMap({
       }
     };
 
-    /** When the style is fully loaded, add optional layers again */
+    /** When a style is (re)loaded, keep globe + optional 3D buildings, and reattach markers */
     map.on("style.load", () => {
-      add3dBuildings();
-      // Markers survive style changes, but add back if needed:
+      ensureGlobeProjection();       // <- keep the globe look
+      add3dBuildingsIfAvailable();   // <- only adds on styles that support it
       markersRef.current.forEach((m) => m.addTo(map));
     });
 
     /** First-time data load */
     map.on("load", async () => {
       try {
+        ensureGlobeProjection(); // make sure initial style starts as globe too
+
         const resp = await fetch(endpoint);
         if (!resp.ok) throw new Error(`Fetch failed: ${resp.status} ${resp.statusText}`);
         const data: AudienceCollection = await resp.json();
@@ -187,30 +199,26 @@ export default function AudienceMap({
       map.remove();
       mapRef.current = null;
     };
-    // IMPORTANT: init once; do NOT depend on styleUrl or endpoint here.
+    // init once
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** Toggle styles using setStyle (no re-initialization) */
+  /** Toggle styles using setStyle (no re-init) and preserve globe */
   const handleToggleTheme = () => {
     const map = mapRef.current;
     if (!map) return;
 
-    const next =
-      styleUrl.includes("light-v11") || styleUrl.includes("streets-v12")
-        ? DARK_STYLE
-        : LIGHT_STYLE;
-
+    const next = styleUrl === LIGHT_STYLE ? DARK_STYLE : LIGHT_STYLE;
     setStyleUrl(next);
-    map.setStyle(next); // triggers 'style.load' where we re-add the 3D layer
+    map.setStyle(next); // 'style.load' handler will re-apply globe + optional 3D layer
   };
 
   return (
     <div
       style={{
         position: "relative",
-        // Ensure the map has a real height. Change as needed or override via prop.
-        height: 500,
+        height: 500,         // change to 100dvh for full-screen
+        width: "100%",
         ...style,
       }}
       className={className}
@@ -228,7 +236,9 @@ export default function AudienceMap({
             boxShadow: "0 4px 16px rgba(0,0,0,.12)",
           }}
         >
-          <button onClick={handleToggleTheme}>Toggle Light/Dark</button>
+          <button onClick={handleToggleTheme}>
+            {styleUrl === LIGHT_STYLE ? "Dark mode" : "Light (Globe)"}
+          </button>
         </div>
       )}
       <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
