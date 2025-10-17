@@ -1,15 +1,18 @@
 "use client"
 
+import { useState } from "react"
 import { Particles } from "@/components/ui/particles"
 import { Globe } from "@/components/ui/globe"
 import { OrbInput } from "@/components/ui/animated-input"
 
 export default function InitPage() {
+  const [isInputFocused, setIsInputFocused] = useState(false)
+  
   return (
     <div className="relative h-screen w-full overflow-hidden bg-black">
       {/* Particles background - full screen */}
       <Particles
-        className="absolute inset-0"
+        className={`absolute inset-0 transition-all duration-300 ${isInputFocused ? 'blur-md' : ''}`}
         quantity={200}
         ease={80}
         color="#ffffff"
@@ -19,12 +22,12 @@ export default function InitPage() {
       {/* Centered OrbInput - smaller */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="scale-100 opacity-100">
-          <OrbInput />
+          <OrbInput onFocusChange={setIsInputFocused} />
         </div>
       </div>
 
       {/* Globe footer at bottom */}
-      <div className="absolute bottom-0 left-0 right-0 h-[10px] flex items-end justify-center pb-8">
+      <div className={`absolute bottom-0 left-0 right-0 h-[10px] flex items-end justify-center pb-8 transition-all duration-300 ${isInputFocused ? 'blur-md' : ''}`}>
         <Globe
           className="opacity-80 scale-220"
           config={{

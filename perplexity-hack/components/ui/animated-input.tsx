@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
 
-export function OrbInput() {
+export function OrbInput({ onFocusChange }: { onFocusChange?: (focused: boolean) => void }) {
   const [value, setValue] = useState("")
   const [isFocused, setIsFocused] = useState(false)
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
@@ -113,8 +113,14 @@ export function OrbInput() {
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
+            onFocus={() => {
+              setIsFocused(true)
+              onFocusChange?.(true)
+            }}
+            onBlur={() => {
+              setIsFocused(false)
+              onFocusChange?.(false)
+            }}
             placeholder={`${displayedText}${isTyping ? "|" : ""}`}
             aria-label="Ask a question"
             className="w-full text-lg text-white placeholder-gray-300 bg-transparent border-none outline-none font-light"
