@@ -404,5 +404,82 @@ async def main():
                 print(f"      • {link_type}: {link}")
             print()
 
+async def find_cofounders_api(domain: str, max_results: int = 20, include_coordinates: bool = True) -> dict:
+    """
+    API-friendly function to find cofounders and return structured data
+    Returns a dict ready for JSON serialization
+    """
+    # Get results from multiple queries
+    results = await find_cofounders_comprehensive(domain)
+    
+    all_founders = []
+    seen_names = set()
+    
+    for result in results:
+        founders = extract_json_from_response(result)
+        
+        for founder in founders:
+            if not validate_founder(founder):
+                continue
+            
+            name = founder['name'].strip().lower()
+            if name not in seen_names:
+                seen_names.add(name)
+                all_founders.append(founder)
+    
+    # Add geocoding and match scores if requested
+    if include_coordinates and all_founders:
+        geolocator = Nominatim(user_agent="cofounder_finder_api")
+        
+        for founder in all_founders:
+            location = founder.get('location', '')
+            coords = geocode_location(location, geolocator)
+            founder['coordinates'] = coords
+            
+            # Use AI's match score if provided, otherwise calculate
+            if 'match_score' not in founder or founder.get('match_score') is None:
+                founder['match_score'] = calculate_match_score(founder, domain)
+            else:
+                ai_score = founder.get('match_score')
+                if isinstance(ai_score, (int, float)) and 1 <= ai_score <= 10:
+                    founder['match_score'] = int(ai_score)
+                else:
+                    founder['match_score'] = calculate_match_score(founder, domain)
+    else:
+        # Just calculate match scores without geocoding
+        for founder in all_founders:
+            if 'match_score' not in founder or founder.get('match_score') is None:
+                founder['match_score'] = calculate_match_score(founder, domain)
+            else:
+                ai_score = founder.get('match_score')
+                if isinstance(ai_score, (int, float)) and 1 <= ai_score <= 10:
+                    founder['match_score'] = int(ai_score)
+                else:
+                    founder['match_score'] = calculate_match_score(founder, domain)
+    
+    # Sort by match score (highest first)
+    all_founders.sort(key=lambda x: x.get('match_score', 0), reverse=True)
+    
+    # Limit results
+    limited_founders = all_founders[:max_results]
+    
+    # Generate summary
+    summary = {
+        "total_found": len(all_founders),
+        "returned": len(limited_founders),
+        "with_linkedin": sum(1 for f in limited_founders if any('linkedin.com' in l for l in f.get('links', []))),
+        "with_twitter": sum(1 for f in limited_founders if any('twitter.com' in l or 'x.com' in l for l in f.get('links', []))),
+        "with_crunchbase": sum(1 for f in limited_founders if any('crunchbase.com' in l for l in f.get('links', []))),
+        "with_multiple_links": sum(1 for f in limited_founders if len(f.get('links', [])) > 1),
+        "average_match_score": round(sum(f.get('match_score', 0) for f in limited_founders) / len(limited_founders), 1) if limited_founders else 0,
+        "high_matches_8plus": sum(1 for f in limited_founders if f.get('match_score', 0) >= 8),
+    }
+    
+    return {
+        "cofounders": limited_founders,
+        "summary": summary,
+        "total_found": len(all_founders)
+    }
+
 if __name__ == "__main__":
     asyncio.run(main())
