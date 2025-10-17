@@ -11,6 +11,8 @@ from geojson_generator import GeoJSONPipeline
 
 # Import cofounder finder function
 from cofounder import find_cofounders_api
+# Import VC finder function
+from vc import find_vcs_api
 
 # Load environment variables
 load_dotenv()
@@ -55,6 +57,29 @@ class CofounderResponse(BaseModel):
     timestamp: str
     summary: Dict
 
+# Pydantic models for VC endpoint
+class VCRequest(BaseModel):
+    idea: str
+    max_results: Optional[int] = 20
+    include_coordinates: Optional[bool] = True
+
+class VC(BaseModel):
+    name: str
+    firm: str
+    location: str
+    links: List[str]
+    coordinates: Optional[Coordinates] = None
+    match_score: int
+
+class VCResponse(BaseModel):
+    success: bool
+    domain: str
+    stage: str
+    total_found: int
+    vcs: List[VC]
+    timestamp: str
+    summary: Dict
+
 @app.get("/")
 async def root():
     return {
@@ -62,7 +87,8 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "/audience-map": "Generate GeoJSON heatmap of target audience locations",
-            "/find-cofounders": "Find potential cofounders for your startup idea"
+            "/find-cofounders": "Find potential cofounders for your startup idea",
+            "/find-vcs": "Find venture capitalists and investors for your startup"
         }
     }
 
@@ -136,6 +162,48 @@ async def find_cofounders(request: CofounderRequest):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error finding cofounders: {str(e)}")
+
+@app.post("/find-vcs", response_model=VCResponse)
+async def find_vcs(request: VCRequest):
+    """
+    Find venture capitalists and investors based on startup domain/idea (seed stage only)
+    
+    Parameters:
+    - idea: Your startup domain or idea (e.g., "AI for legal technology")
+    - max_results: Maximum number of results to return (default: 20)
+    - include_coordinates: Whether to geocode locations (default: true)
+    
+    Returns:
+    - JSON with list of seed-stage VCs, sorted by match score
+    """
+    try:
+        domain = request.idea.strip()
+        if not domain:
+            raise HTTPException(status_code=400, detail="Idea/domain cannot be empty")
+        
+        # Fixed to seed stage only
+        stage = "seed"
+        
+        # Call the VC finder
+        result = await find_vcs_api(
+            domain=domain,
+            stage=stage,
+            max_results=request.max_results,
+            include_coordinates=request.include_coordinates
+        )
+        
+        return VCResponse(
+            success=True,
+            domain=domain,
+            stage=result["stage"],
+            total_found=result["total_found"],
+            vcs=result["vcs"],
+            timestamp=datetime.now().isoformat(),
+            summary=result["summary"]
+        )
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error finding VCs: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
