@@ -7,8 +7,11 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 interface LocationFeature {
   type: 'Feature';
   geometry: {
+    type: 'Polygon';
+    coordinates: number[][][];
+  } | {
     type: 'Point';
-    coordinates: [number, number];
+    coordinates: number[];
   };
   properties: {
     name: string;
@@ -19,6 +22,15 @@ interface LocationFeature {
     target_fit: string;
     weight: number;
     display_name: string;
+    bbox?: {
+      min_lat: number;
+      max_lat: number;
+      min_lon: number;
+      max_lon: number;
+    };
+    center_lat: number;
+    center_lng: number;
+    feature_type: 'polygon' | 'point';
   };
 }
 
@@ -242,13 +254,18 @@ const MapboxExample = () => {
   }, []);
 
   useEffect(() => {
-    if (!data) return;
+    if (!data || !mapContainerRef.current) return;
 
     mapboxgl.accessToken = 'pk.eyJ1IjoiYWR3aXRoYW5zIiwiYSI6ImNtZ3Y0ejF1ajBna3gya3NlOGxlM2dvaHQifQ.Nm-Nyqb3OLpB1cpZCzvTIw';
 
     // Clean up existing map if it exists
     if (mapRef.current) {
-      mapRef.current.remove();
+      try {
+        mapRef.current.remove();
+      } catch (error) {
+        console.warn('Error removing existing map:', error);
+      }
+      mapRef.current = null;
     }
 
     mapRef.current = new mapboxgl.Map({
@@ -257,7 +274,7 @@ const MapboxExample = () => {
       config: {
         basemap: {
           theme: 'monochrome',
-          lightPreset: 'night'
+          lightPreset: 'day'
         }
       },
       center: [-120, 50],
@@ -280,112 +297,114 @@ const MapboxExample = () => {
         source.setData(data);
       }
 
+      // Add background source for blue baseline
+      if (!mapRef.current.getSource('audience-background')) {
+        mapRef.current.addSource('audience-background', {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features: [{
+              type: 'Feature',
+              geometry: {
+                type: 'Polygon',
+                coordinates: [[
+                  [-180, -90],
+                  [180, -90],
+                  [180, 90],
+                  [-180, 90],
+                  [-180, -90]
+                ]]
+              },
+              properties: {}
+            }]
+          }
+        });
+      }
+
       // Remove existing layers if they exist
       if (mapRef.current.getLayer('audience-heatmap')) {
         mapRef.current.removeLayer('audience-heatmap');
       }
-      if (mapRef.current.getLayer('audience-points')) {
-        mapRef.current.removeLayer('audience-points');
+      if (mapRef.current.getLayer('audience-background')) {
+        mapRef.current.removeLayer('audience-background');
       }
 
-      // Add heatmap layer - only visible when zoomed in
+      // Add blue background layer for baseline
+      mapRef.current.addLayer({
+        id: 'audience-background',
+        type: 'fill',
+        source: 'audience-background',
+        paint: {
+          'fill-color': 'rgba(0, 100, 255, 0.2)', // Blue baseline
+          'fill-opacity': 0.3
+        }
+      });
+
+      // Add Mapbox native heatmap layer for all features
       mapRef.current.addLayer({
         id: 'audience-heatmap',
         type: 'heatmap',
         source: 'audience-data',
-        minzoom: 8, // Only show heatmap when zoomed in
-        maxzoom: 15,
         paint: {
-          // Increase the heatmap weight based on the weight property
+          // Weight based on the score (1-5) for polygon areas only
           'heatmap-weight': [
             'interpolate',
             ['linear'],
             ['get', 'weight'],
-            0,
-            0,
-            5,
-            1
+            1, 0.2,
+            2, 0.4,
+            3, 0.6,
+            4, 0.8,
+            5, 1.0
           ],
-          // Increase the heatmap color weight weight by zoom level - larger intensity
+          // Higher intensity at low zoom levels to ensure visibility
           'heatmap-intensity': [
             'interpolate',
             ['linear'],
             ['zoom'],
-            8,
-            2,
-            15,
-            5
+            0, 3,    // High intensity at global view
+            3, 2,    // Medium intensity at country level
+            6, 1.5,  // Lower intensity at city level
+            10, 1    // Normal intensity when zoomed in
           ],
-          // Color ramp for heatmap
+          // Color gradient from blue (low) to red (high) with proper blue baseline
           'heatmap-color': [
             'interpolate',
             ['linear'],
             ['heatmap-density'],
-            0,
-            'rgba(33,102,172,0)',
-            0.2,
-            'rgb(103,169,207)',
-            0.4,
-            'rgb(209,229,240)',
-            0.6,
-            'rgb(253,219,199)',
-            0.8,
-            'rgb(239,138,98)',
-            1,
-            'rgb(178,24,43)'
+            0, 'rgba(0, 0, 255, 0)',       // Transparent for zero density (shows background)
+            0.05, 'rgba(0, 100, 255, 0.3)', // Blue for very low density
+            0.1, 'rgba(0, 150, 255, 0.5)',  // Blue for low density
+            0.2, 'rgba(0, 255, 255, 0.7)',  // Cyan
+            0.4, 'rgba(0, 255, 0, 0.8)',   // Green
+            0.6, 'rgba(255, 255, 0, 0.9)',  // Yellow
+            1, 'rgba(255, 0, 0, 1)'         // Red for high density
           ],
-          // Adjust the heatmap radius by zoom level - much larger halo
-          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 8, 20, 15, 100],
-          // Show heatmap when zoomed in
-          'heatmap-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0, 9, 1, 15, 1]
-        },
-        slot: 'top'
-      });
-
-      // Add circle layer for individual points - visible when zoomed out
-      mapRef.current.addLayer({
-        id: 'audience-points',
-        type: 'circle',
-        source: 'audience-data',
-        minzoom: 3,
-        maxzoom: 8, // Hide points when zoomed in (heatmap takes over)
-        paint: {
-          // Size circle radius by weight and zoom level - larger points when zoomed out
-          'circle-radius': [
+          // Smaller radius for better visibility when zoomed out
+          'heatmap-radius': [
             'interpolate',
             ['linear'],
             ['zoom'],
-            3,
-            ['interpolate', ['linear'], ['get', 'weight'], 1, 8, 5, 16],
-            7,
-            ['interpolate', ['linear'], ['get', 'weight'], 1, 6, 5, 12],
-            8,
-            ['interpolate', ['linear'], ['get', 'weight'], 1, 4, 5, 8]
+            0, 80,     // Smaller radius at global view
+            2, 70,     // Smaller at continent level
+            4, 60,     // Medium at country level
+            6, 50,     // Medium at state level
+            8, 40,     // At city level
+            10, 30     // When zoomed in
           ],
-          'circle-emissive-strength': 0.75,
-          // Color circle by weight
-          'circle-color': [
+          // Higher opacity for better visibility, especially at global zoom
+          'heatmap-opacity': [
             'interpolate',
             ['linear'],
-            ['get', 'weight'],
-            1,
-            'rgba(33,102,172,0.8)',
-            2,
-            'rgb(103,169,207)',
-            3,
-            'rgb(209,229,240)',
-            4,
-            'rgb(253,219,199)',
-            5,
-            'rgb(239,138,98)'
-          ],
-          'circle-stroke-color': 'white',
-          'circle-stroke-width': 2,
-          // Show points when zoomed out, hide when zoomed in
-          'circle-opacity': ['interpolate', ['linear'], ['zoom'], 3, 1, 7, 1, 8, 0]
-        },
-        slot: 'top'
+            ['zoom'],
+            0, 1.0,   // Full opacity at global view
+            3, 0.9,   // High opacity at continent level
+            6, 0.8,   // Medium opacity at country level
+            10, 0.7   // Lower opacity when zoomed in
+          ]
+        }
       });
+
 
       // Create a floating hover card element
       const hoverCard = document.createElement('div');
@@ -422,14 +441,14 @@ const MapboxExample = () => {
       // Store the function reference for cleanup
       (mapRef.current as any)._updateHoverCardPosition = updateHoverCardPosition;
 
-      // Add hover events for points
-      mapRef.current.on('mouseenter', 'audience-points', (e) => {
+      // Add hover events for polygons and points
+      const handleMouseEnter = (e: any) => {
         if (mapRef.current) {
           mapRef.current.getCanvas().style.cursor = 'pointer';
         }
-      });
+      };
 
-      mapRef.current.on('mousemove', 'audience-points', (e) => {
+      const handleMouseMove = (e: any) => {
         const properties = e.features?.[0]?.properties;
         if (properties && hoverCardRef.current) {
           hoverCardRef.current.innerHTML = `
@@ -437,66 +456,35 @@ const MapboxExample = () => {
             <div style="color: #a0a0a0; font-size: 12px; margin-bottom: 8px;">${properties.borough}, ${properties.country}</div>
             <div style="font-size: 12px; line-height: 1.4;">
               <div><strong>Score:</strong> ${properties.weight.toFixed(1)}/5</div>
+              <div style="margin-top: 4px;"><strong>Description:</strong> ${properties.description.substring(0, 100)}${properties.description.length > 100 ? '...' : ''}</div>
             </div>
           `;
           hoverCardRef.current.style.opacity = '1';
         }
-      });
+      };
 
-      mapRef.current.on('mouseleave', 'audience-points', () => {
+      const handleMouseLeave = () => {
         if (mapRef.current) {
           mapRef.current.getCanvas().style.cursor = '';
         }
         if (hoverCardRef.current) {
           hoverCardRef.current.style.opacity = '0';
         }
-      });
+      };
 
-      // Add hover events for heatmap
-      mapRef.current.on('mouseenter', 'audience-heatmap', (e) => {
-        if (mapRef.current) {
-          mapRef.current.getCanvas().style.cursor = 'pointer';
-        }
-      });
+      // Add hover events for heatmap layer (works at all zoom levels)
+      mapRef.current.on('mouseenter', 'audience-heatmap', handleMouseEnter);
+      mapRef.current.on('mousemove', 'audience-heatmap', handleMouseMove);
+      mapRef.current.on('mouseleave', 'audience-heatmap', handleMouseLeave);
 
-      mapRef.current.on('mousemove', 'audience-heatmap', (e) => {
-        const features = e.features;
-        if (features && features.length > 0) {
-          // Get the primary feature (first one with is_primary: true)
-          const primaryFeature = features.find(f => f.properties?.is_primary) || features[0];
-          const properties = primaryFeature?.properties;
-
-          if (properties && hoverCardRef.current) {
-            hoverCardRef.current.innerHTML = `
-              <div style="font-weight: 600; margin-bottom: 4px;">${properties.name}</div>
-              <div style="color: #a0a0a0; font-size: 12px; margin-bottom: 8px;">${properties.borough}, ${properties.country}</div>
-              <div style="font-size: 12px; line-height: 1.4;">
-                <div><strong>Score:</strong> ${properties.weight.toFixed(1)}/5</div>
-                <div style="margin-top: 4px;"><strong>Description:</strong> ${properties.description.substring(0, 100)}${properties.description.length > 100 ? '...' : ''}</div>
-              </div>
-            `;
-            hoverCardRef.current.style.opacity = '1';
-          }
-        }
-      });
-
-      mapRef.current.on('mouseleave', 'audience-heatmap', () => {
-        if (mapRef.current) {
-          mapRef.current.getCanvas().style.cursor = '';
-        }
-        if (hoverCardRef.current) {
-          hoverCardRef.current.style.opacity = '0';
-        }
-      });
-
-      // Add click event for popups (only on primary points)
-      mapRef.current.on('click', 'audience-points', (e) => {
+      // Add click event for popups on polygons
+      const handleClick = (e: any) => {
         if (!mapRef.current) return;
 
         const coordinates = e.lngLat;
         const properties = e.features?.[0]?.properties;
 
-        if (properties && properties.is_primary) {
+        if (properties) {
           new mapboxgl.Popup()
             .setLngLat(coordinates)
             .setHTML(`
@@ -512,22 +500,34 @@ const MapboxExample = () => {
             `)
             .addTo(mapRef.current);
         }
-      });
+      };
+
+      // Add click events for heatmap layer
+      mapRef.current.on('click', 'audience-heatmap', handleClick);
     });
 
     // Cleanup function
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-      }
-      // Clean up hover card and event listeners
+      // Clean up hover card and event listeners first
       if (hoverCardRef.current && hoverCardRef.current.parentNode) {
         hoverCardRef.current.parentNode.removeChild(hoverCardRef.current);
         hoverCardRef.current = null;
       }
+
+      // Clean up event listeners
       const updateHoverCardPosition = (mapRef.current as any)?._updateHoverCardPosition;
       if (updateHoverCardPosition) {
         document.removeEventListener('mousemove', updateHoverCardPosition);
+      }
+
+      // Clean up map last
+      if (mapRef.current) {
+        try {
+          mapRef.current.remove();
+        } catch (error) {
+          console.warn('Error removing map:', error);
+        }
+        mapRef.current = null;
       }
     };
   }, [data]);
