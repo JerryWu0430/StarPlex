@@ -1,103 +1,156 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import AppPage from "./appPage";
+import InitPage from "./initPage";
+import { FieldSwitch } from "@/components/fieldSwitch";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [showApp, setShowApp] = useState(false);
+  const [initialQuery, setInitialQuery] = useState("");
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [hideInit, setHideInit] = useState(false);
+  const [showVCs, setShowVCs] = useState(false);
+  const [showCompetitors, setShowCompetitors] = useState(false);
+  const [showDemographics, setShowDemographics] = useState(false);
+  const [showCofounders, setShowCofounders] = useState(false);
+  const [isGeneratingPitchDeck, setIsGeneratingPitchDeck] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleEnter = (value: string) => {
+    setInitialQuery(value);
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setShowApp(true);
+    }, 600);
+    setTimeout(() => {
+      setHideInit(true);
+    }, 1400); // Hide after transition completes
+  };
+
+  const handleGeneratePitchDeck = async () => {
+    setIsGeneratingPitchDeck(true);
+    
+    try {
+      const response = await fetch("http://localhost:8000/generate-pitch-deck", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          idea: initialQuery || "AI for legal technology",
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate pitch deck: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Pitch deck generated:", data);
+      
+      // Download the PowerPoint file if available
+      if (data.pptx_file) {
+        const downloadUrl = `http://localhost:8000/download-pitch-deck/${data.pptx_file}`;
+        
+        // Create a temporary anchor element to trigger download
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = data.pptx_file;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error("Error generating pitch deck:", error);
+    } finally {
+      setIsGeneratingPitchDeck(false);
+    }
+  };
+
+  return (
+    <div className="relative w-full h-screen overflow-hidden">
+      {!hideInit && (
+        <div
+          className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
+            isTransitioning 
+              ? "opacity-0 blur-xl scale-105" 
+              : "opacity-100 blur-0 scale-100"
+          }`}
+          style={{ pointerEvents: isTransitioning ? "none" : "auto" }}
+        >
+          <InitPage onEnter={handleEnter} />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      )}
+
+      {showApp && (
+        <div
+          className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
+            showApp 
+              ? "opacity-100 blur-0 scale-100" 
+              : "opacity-0 blur-xl scale-95"
+          }`}
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          <AppPage initialQuery={initialQuery} />
+          
+          {/* Pitch deck controls overlay */}
+          <div className="absolute top-4 right-4 z-10 grid grid-cols-1 gap-2">
+            <FieldSwitch 
+              title="Market Competitors" 
+              description="Who's copying your genius idea?" 
+              checked={showCompetitors}
+              onCheckedChange={setShowCompetitors}
+            />
+            <FieldSwitch 
+              title="Customer Demographics" 
+              description="Where's the market?" 
+              checked={showDemographics}
+              onCheckedChange={setShowDemographics}
+            />
+            <FieldSwitch 
+              title="VC Victims" 
+              description="Who is willing to throw you money?" 
+              checked={showVCs}
+              onCheckedChange={setShowVCs}
+            />
+            <FieldSwitch 
+              title="Co-ballers" 
+              description="Who's willing to scale a B2B AI SaaS startup?" 
+              checked={showCofounders}
+              onCheckedChange={setShowCofounders}
+            />
+            <div className="w-full max-w-xs">
+              <button
+                onClick={handleGeneratePitchDeck}
+                disabled={isGeneratingPitchDeck}
+                className="w-full border p-3 shadow-sm bg-card opacity-90 rounded-lg transition-all duration-200 hover:opacity-100 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-left flex-1">
+                    <div className="text-sm font-medium leading-snug">
+                      {isGeneratingPitchDeck ? "Generating Pitch Deck..." : "Generate Pitch Deck"}
+                    </div>
+                    <div className="text-xs text-muted-foreground leading-normal font-normal">
+                      {isGeneratingPitchDeck 
+                        ? "AI is creating your presentation..." 
+                        : "Create investor-ready slides with AI"}
+                    </div>
+                  </div>
+                  {isGeneratingPitchDeck ? (
+                    <svg className="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  )}
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -38,14 +38,15 @@ class GeoJSONPipeline:
                 country_code=query_params.get("country")
             )
             
-            # Step 3: Build GeoJSON FeatureCollection
+            # Step 3: Build GeoJSON FeatureCollection with bounding boxes
             features = []
             for i, location in enumerate(locations):
                 if i < len(geocoded_results):
                     geocoded = geocoded_results[i]
                     
                     if geocoded.get("success", False) or geocoded.get("lat") is not None:
-                        feature = {
+                        # Create point feature for heatmap visualization
+                        point_feature = {
                             "type": "Feature",
                             "geometry": {
                                 "type": "Point",
@@ -59,10 +60,14 @@ class GeoJSONPipeline:
                                 "description": location.description,
                                 "target_fit": location.target_audience_fit,
                                 "weight": location.fitness_score,
-                                "display_name": geocoded.get("display_name", location.name)
+                                "display_name": geocoded.get("display_name", location.name),
+                                "bbox": geocoded.get("bbox"),
+                                "center_lat": geocoded["lat"],
+                                "center_lng": geocoded["lng"],
+                                "feature_type": "point"
                             }
                         }
-                        features.append(feature)
+                        features.append(point_feature)
             
             return {
                 "type": "FeatureCollection",

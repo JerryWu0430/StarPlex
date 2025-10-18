@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 import os
@@ -18,6 +19,8 @@ from vc import find_vcs_api
 from comprehensive_market_analyzer import analyze_market_comprehensive_api
 # Import competitor finder function
 from competitors import find_competitors_api
+# Import pitch deck generator function
+from pitch_deck import generate_pitch_deck_api
 
 # Load environment variables
 load_dotenv()
@@ -107,6 +110,23 @@ class CompetitorResponse(BaseModel):
     timestamp: str
     summary: Dict
 
+# Pydantic models for pitch deck endpoint
+class PitchDeckRequest(BaseModel):
+    idea: str
+
+class PitchDeckSlide(BaseModel):
+    title: str
+    bullets: List[str]
+
+class PitchDeckResponse(BaseModel):
+    success: bool
+    company_name: str
+    tagline: str
+    slides: List[PitchDeckSlide]
+    json_file: str
+    pptx_file: Optional[str] = None
+    timestamp: str
+
 @app.get("/")
 async def root():
     return {
@@ -118,6 +138,7 @@ async def root():
             "/find-vcs": "Find venture capitalists and investors for your startup",
             "/find-competitors": "Find competing companies in your market space",
             "/comprehensive-market-analysis": "Comprehensive market analysis with search trends and detailed insights"
+            "/generate-pitch-deck": "Generate investor pitch deck for your startup idea"
         }
     }
 
@@ -320,6 +341,82 @@ async def comprehensive_market_analysis(request: ComprehensiveMarketAnalysisRequ
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error in comprehensive market analysis: {str(e)}")
+@app.post("/generate-pitch-deck", response_model=PitchDeckResponse)
+async def generate_pitch_deck_endpoint(request: PitchDeckRequest):
+    """
+    Generate a complete pitch deck PowerPoint presentation based on startup idea
+    
+    Parameters:
+    - idea: Your startup domain or idea (e.g., "AI-powered legal technology platform")
+    
+    Returns:
+    - JSON with pitch deck content, company name, tagline, and file paths
+    """
+    try:
+        idea = request.idea.strip()
+        if not idea:
+            raise HTTPException(status_code=400, detail="Idea cannot be empty")
+        
+        # Call the pitch deck generator
+        result = await generate_pitch_deck_api(startup_idea=idea)
+        
+        if not result.get('success'):
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Failed to generate pitch deck: {result.get('error', 'Unknown error')}"
+            )
+        
+        pitch_data = result.get('pitch_data', {})
+        
+        return PitchDeckResponse(
+            success=True,
+            company_name=pitch_data.get('company_name', 'Startup'),
+            tagline=pitch_data.get('tagline', ''),
+            slides=pitch_data.get('slides', []),
+            json_file=result.get('json_file', ''),
+            pptx_file=result.get('pptx_file'),
+            timestamp=datetime.now().isoformat()
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating pitch deck: {str(e)}")
+
+@app.get("/download-pitch-deck/{filename}")
+async def download_pitch_deck(filename: str):
+    """
+    Download a generated pitch deck PowerPoint file
+    
+    Parameters:
+    - filename: Name of the pitch deck file to download
+    
+    Returns:
+    - PowerPoint file as a downloadable attachment
+    """
+    try:
+        # Security: only allow downloading .pptx files from current directory
+        if not filename.endswith('.pptx'):
+            raise HTTPException(status_code=400, detail="Invalid file type")
+        
+        if '..' in filename or '/' in filename:
+            raise HTTPException(status_code=400, detail="Invalid filename")
+        
+        file_path = os.path.join(os.path.dirname(__file__), filename)
+        
+        if not os.path.exists(file_path):
+            raise HTTPException(status_code=404, detail="File not found")
+        
+        return FileResponse(
+            path=file_path,
+            filename=filename,
+            media_type='application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error downloading file: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
