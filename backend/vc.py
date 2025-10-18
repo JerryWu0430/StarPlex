@@ -68,7 +68,19 @@ Location MUST be "City, Country" format. Include match_score 1-10 for {domain}. 
 
         f"""Find venture capitalists from a16z, Sequoia, YC, Accel who invest in {domain}. Return ONLY JSON:
 [{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 9}}]
-Real VCs only. Include match_score 1-10 for {domain}. Location must include both city and country."""
+Real VCs only. Include match_score 1-10 for {domain}. Location must include both city and country.""",
+
+        f"""Find angel investors and micro VCs in {domain} space. Return ONLY JSON:
+[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 7}}]
+Individual investors with "City, Country" location format. Include match_score 1-10.""",
+
+        f"""Search Crunchbase and PitchBook for {domain} investors at {stage} stage. Return ONLY JSON:
+[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 8}}]
+Real VCs with verified links. Include match_score 1-10 for {domain}. Location: "City, Country" format only.""",
+
+        f"""Find emerging and established VCs investing in {domain} sector. Return ONLY JSON:
+[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 7}}]
+Individual VCs with "City, Country" location. Include match_score 1-10 for {domain}. Skip if location incomplete."""
     ]
     
     async with AsyncPerplexity() as client:

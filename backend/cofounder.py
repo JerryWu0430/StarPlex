@@ -66,7 +66,19 @@ Location MUST be "City, Country" format. Include match_score 1-10 for {domain}. 
 
         f"""Search Y Combinator and TechCrunch for {domain} founders. Return ONLY JSON:
 [{{"name": "Full Name", "location": "City, Country", "links": ["url1"], "match_score": 9}}]
-Real people only. Include match_score 1-10 for {domain}. Location must include both city and country."""
+Real people only. Include match_score 1-10 for {domain}. Location must include both city and country.""",
+
+        f"""Find entrepreneurs in {domain} who could be cofounders. Return ONLY JSON:
+[{{"name": "Full Name", "location": "City, Country", "links": ["url1"], "match_score": 7}}]
+Individual people with "City, Country" location format. Include match_score 1-10.""",
+
+        f"""Find {domain} founders on Crunchbase or AngelList. Return ONLY JSON:
+[{{"name": "Full Name", "location": "City, Country", "links": ["url1"], "match_score": 8}}]
+Real people with verified links. Include match_score 1-10 for {domain}. Location: "City, Country" format only.""",
+
+        f"""Find thought leaders and builders in {domain}. Return ONLY JSON:
+[{{"name": "Full Name", "location": "City, Country", "links": ["url1"], "match_score": 6}}]
+Individual people with "City, Country" location. Include match_score 1-10 for {domain}. Skip if location incomplete."""
     ]
     
     async with AsyncPerplexity() as client:
