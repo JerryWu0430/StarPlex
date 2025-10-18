@@ -7,32 +7,32 @@ async function fetchWithRetry<T>(
   initialDelay: number = 2000
 ): Promise<T> {
   let lastError: Error | null = null;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fetchFn();
     } catch (error: any) {
       lastError = error;
-      
+
       // Check if it's a rate limit error (429)
-      const isRateLimit = error?.message?.includes("429") || 
-                          error?.message?.includes("rate limit") ||
-                          error?.message?.includes("Rate limit");
-      
+      const isRateLimit = error?.message?.includes("429") ||
+        error?.message?.includes("rate limit") ||
+        error?.message?.includes("Rate limit");
+
       // If it's the last attempt or not a rate limit error, throw
       if (attempt === maxRetries || !isRateLimit) {
         throw error;
       }
-      
+
       // Calculate delay with exponential backoff
       const delay = initialDelay * Math.pow(2, attempt);
-      console.log(`Rate limit hit, retrying in ${delay/1000}s... (attempt ${attempt + 1}/${maxRetries + 1})`);
-      
+      console.log(`Rate limit hit, retrying in ${delay / 1000}s... (attempt ${attempt + 1}/${maxRetries + 1})`);
+
       // Wait before retrying
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  
+
   throw lastError || new Error("Max retries exceeded");
 }
 
@@ -159,22 +159,18 @@ export async function findCofounders(idea: string, maxResults: number = 20): Pro
   });
 }
 
-export async function getAudienceMap(
-  startupIdea: string,
-  targetDescription: string = "Target audience for this startup",
-  country?: string
-) {
+export async function getAudienceMap(startupIdea: string) {
+  console.log("Getting audience map for:", startupIdea);
   return fetchWithRetry(async () => {
-    const params = new URLSearchParams({
-      startup_idea: startupIdea,
-      target_description: targetDescription,
+    const response = await fetch(`${API_BASE_URL}/audience-map`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        startup_idea: startupIdea,
+      }),
     });
-
-    if (country) {
-      params.append("country", country);
-    }
-
-    const response = await fetch(`${API_BASE_URL}/audience-map?${params.toString()}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: response.statusText }));

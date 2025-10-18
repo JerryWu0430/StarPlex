@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import mapboxgl, { Map, Marker, LngLatBounds, FillExtrusionLayer } from "mapbox-gl";
 import type { FeatureCollection, Feature, Point } from "geojson";
 import "mapbox-gl/dist/mapbox-gl.css";
+import UnifiedPinSidebar from "./UnifiedPinSidebar";
 
 /** ---------- Types ---------- */
 type AudienceProps = {
@@ -87,6 +88,173 @@ export default function AudienceMap({
   const cofounderMarkersRef = useRef<Marker[]>([]);
   const [styleUrl, setStyleUrl] = useState<string>(initialStyle);
   const [heatmapData, setHeatmapData] = useState<AudienceCollection | null>(null);
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+  const [selectedPinData, setSelectedPinData] = useState<any>(null);
+
+  /** Handle pin click to show sidebar */
+  const handlePinClick = useCallback((pinData: any) => {
+    setSelectedPinData(pinData);
+    setSidebarVisible(true);
+  }, []);
+
+  /** Handle sidebar close */
+  const handleSidebarClose = useCallback(() => {
+    setSidebarVisible(false);
+    setSelectedPinData(null);
+  }, []);
+
+  /** Load demographics data and update map */
+  const loadDemographicsData = useCallback((data: AudienceCollection) => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Store data for heatmap
+    setHeatmapData(data);
+
+    // Fit bounds / center
+    const coords = data.features.map((f) => f.geometry.coordinates);
+    if (coords.length > 1) {
+      const bounds = new LngLatBounds(coords[0] as [number, number], coords[0] as [number, number]);
+      coords.forEach((c) => bounds.extend(c as [number, number]));
+      map.fitBounds(bounds, { padding: 100, duration: 1200 });
+    } else if (coords.length === 1) {
+      map.setCenter(coords[0] as [number, number]);
+      map.setZoom(10);
+    }
+
+    // Clear existing markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    // Add markers + popups (only if demographics is not enabled - we show heatmap instead)
+    if (!showDemographics) {
+      data.features.forEach((feature: AudienceFeature) => {
+        const { coordinates } = feature.geometry;
+        const props = feature.properties ?? {};
+
+        const popupHtml = `
+          <div style="min-width:200px">
+            <h3 style="margin:0 0 6px 0">${props.name ?? ""}</h3>
+            ${props.description ? `<p>${props.description}</p>` : ""}
+            ${props.target_fit ? `<p><strong>Target fit:</strong> ${props.target_fit}</p>` : ""}
+            ${props.display_name ? `<p style="font-size:0.8em;color:#555">${props.display_name}</p>` : ""}
+          </div>`;
+
+        const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
+
+        const marker = new mapboxgl.Marker({ draggable: false })
+          .setLngLat(coordinates as [number, number])
+          .setPopup(popup)
+          .addTo(map);
+
+        markersRef.current.push(marker);
+      });
+    } else {
+      // Clear any existing markers when demographics is enabled
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+    }
+
+    // Add heatmap if demographics enabled
+    if (showDemographics) {
+      // Remove existing heatmap first
+      if (map.getLayer("audience-heatmap-layer")) {
+        map.removeLayer("audience-heatmap-layer");
+      }
+      if (map.getSource("audience-heatmap")) {
+        map.removeSource("audience-heatmap");
+      }
+
+      // Add heatmap source
+      map.addSource("audience-heatmap", {
+        type: "geojson",
+        data: data,
+      });
+
+      // Add heatmap layer
+      if (!map.getLayer("audience-heatmap-layer")) {
+        map.addLayer({
+          id: "audience-heatmap-layer",
+          type: "heatmap",
+          source: "audience-heatmap",
+          maxzoom: 15,
+          paint: {
+            "heatmap-weight": [
+              "interpolate",
+              ["linear"],
+              ["get", "weight"],
+              0,
+              0,
+              1,
+              1,
+            ],
+            "heatmap-intensity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              0,
+              1,
+              15,
+              3,
+            ],
+            "heatmap-color": [
+              "interpolate",
+              ["linear"],
+              ["heatmap-density"],
+              0,
+              "rgba(0, 0, 255, 0)",
+              0.1,
+              "rgb(0, 0, 255)",
+              0.3,
+              "rgb(0, 255, 0)",
+              0.5,
+              "rgb(255, 255, 0)",
+              0.7,
+              "rgb(255, 165, 0)",
+              1,
+              "rgb(255, 0, 0)",
+            ],
+            "heatmap-radius": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              0,
+              20,
+              15,
+              60,
+            ],
+            "heatmap-opacity": 0.6,
+          },
+        });
+
+        // Add cursor pointer for clickable heatmap
+        map.getCanvas().style.cursor = "pointer";
+
+        // Add click interactions for heatmap
+        map.on("click", "audience-heatmap-layer", (e) => {
+          e.preventDefault();
+          e.originalEvent.stopPropagation();
+          if (e.features && e.features.length > 0) {
+            const feature = e.features[0] as unknown as AudienceFeature;
+            // Convert heatmap feature to pin data format
+            const heatmapPinData = {
+              type: 'audience',
+              name: feature.properties?.name || 'Audience Member',
+              location: feature.properties?.display_name || feature.properties?.area_code || 'Unknown Location',
+              description: feature.properties?.description,
+              target_fit: feature.properties?.target_fit,
+              weight: feature.properties?.weight || 1,
+              coordinates: {
+                latitude: feature.geometry.coordinates[1],
+                longitude: feature.geometry.coordinates[0]
+              }
+            };
+            handlePinClick(heatmapPinData);
+          }
+        });
+      }
+    }
+  }, [showDemographics, handlePinClick]);
 
   /** Add heatmap layer for audience data */
   const addHeatmapLayer = useCallback(() => {
@@ -149,24 +317,32 @@ export default function AudienceMap({
       });
 
       // Add cursor pointer for clickable heatmap
-      if (onHeatmapClick) {
-        map.getCanvas().style.cursor = "pointer";
-      }
-
+      map.getCanvas().style.cursor = "pointer";
 
       // Add click interactions for heatmap
-      if (onHeatmapClick) {
-        map.on("click", "audience-heatmap-layer", (e) => {
-          e.preventDefault();
-          e.originalEvent.stopPropagation();
-          if (e.features && e.features.length > 0) {
-            const feature = e.features[0] as unknown as AudienceFeature;
-            onHeatmapClick(feature);
-          }
-        });
-      }
+      map.on("click", "audience-heatmap-layer", (e) => {
+        e.preventDefault();
+        e.originalEvent.stopPropagation();
+        if (e.features && e.features.length > 0) {
+          const feature = e.features[0] as unknown as AudienceFeature;
+          // Convert heatmap feature to pin data format
+          const heatmapPinData = {
+            type: 'audience',
+            name: feature.properties?.name || 'Audience Member',
+            location: feature.properties?.display_name || feature.properties?.area_code || 'Unknown Location',
+            description: feature.properties?.description,
+            target_fit: feature.properties?.target_fit,
+            weight: feature.properties?.weight || 1,
+            coordinates: {
+              latitude: feature.geometry.coordinates[1],
+              longitude: feature.geometry.coordinates[0]
+            }
+          };
+          handlePinClick(heatmapPinData);
+        }
+      });
     }
-  }, [heatmapData, onHeatmapClick]);
+  }, [heatmapData, handlePinClick]);
 
   /** Remove heatmap layer */
   const removeHeatmapLayer = useCallback(() => {
@@ -273,75 +449,12 @@ export default function AudienceMap({
       try {
         ensureGlobeProjection(); // make sure initial style starts as globe too
 
-        // Use demographics data from props if available, otherwise fetch from endpoint
-        let data: AudienceCollection;
+        // If demographics data is available, load it immediately
         if (demographicsData) {
-          data = demographicsData;
-        } else {
-          const resp = await fetch("http://localhost:8000" + endpoint);
-          if (!resp.ok) throw new Error(`Fetch failed: ${resp.status} ${resp.statusText}`);
-          data = await resp.json();
-        }
-
-        // Store data for heatmap
-        setHeatmapData(data);
-
-        // Fit bounds / center
-        const coords = data.features.map((f) => f.geometry.coordinates);
-        if (coords.length > 1) {
-          const bounds = new LngLatBounds(coords[0] as [number, number], coords[0] as [number, number]);
-          coords.forEach((c) => bounds.extend(c as [number, number]));
-          map.fitBounds(bounds, { padding: 100, duration: 1200 });
-        } else if (coords.length === 1) {
-          map.setCenter(coords[0] as [number, number]);
-          map.setZoom(10);
-        }
-
-        // Clear existing markers
-        markersRef.current.forEach((m) => m.remove());
-        markersRef.current = [];
-
-        // Add markers + popups (only if demographics is not enabled - we show heatmap instead)
-        if (!showDemographics) {
-          data.features.forEach((feature: AudienceFeature) => {
-            const { coordinates } = feature.geometry;
-            const props = feature.properties ?? {};
-
-            const popupHtml = `
-              <div style="min-width:200px">
-                <h3 style="margin:0 0 6px 0">${props.name ?? ""}</h3>
-                ${props.description ? `<p>${props.description}</p>` : ""}
-                ${props.target_fit ? `<p><strong>Target fit:</strong> ${props.target_fit}</p>` : ""}
-                ${props.display_name ? `<p style="font-size:0.8em;color:#555">${props.display_name}</p>` : ""}
-              </div>`;
-
-            const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
-
-            const marker = new mapboxgl.Marker({ draggable: false })
-              .setLngLat(coordinates as [number, number])
-              .setPopup(popup)
-              .addTo(map);
-
-            markersRef.current.push(marker);
-          });
-        }
-
-        // Add heatmap if demographics enabled
-        if (showDemographics) {
-          // Remove existing heatmap first
-          removeHeatmapLayer();
-
-          // Add heatmap source
-          map.addSource("audience-heatmap", {
-            type: "geojson",
-            data: data,
-          });
-
-          // Add heatmap layer
-          addHeatmapLayer();
+          loadDemographicsData(demographicsData);
         }
       } catch (err) {
-        console.error("Error fetching audience map:", err);
+        console.error("Error in map load:", err);
       }
     });
 
@@ -386,30 +499,16 @@ export default function AudienceMap({
 
         if (!coordinates?.latitude || !coordinates?.longitude) return;
 
-        // Create popup HTML with VC information
-        const popupHtml = `
-            <div style="min-width:250px; max-width:300px;">
-              <h3 style="margin:0 0 8px 0; font-size: 17px; font-weight: 700; color: #10b981;">${name || 'N/A'}</h3>
-              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Firm:</strong> ${firm || 'N/A'}</p>
-              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Location:</strong> ${location || 'N/A'}</p>
-              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Match Score:</strong> ${match_score || 0}/10</p>
-              ${links && links.length > 0 ? `
-                <div style="margin-top: 8px;">
-                  <p style="margin: 4px 0; font-weight: 600; font-size: 14px; color: #333;">Links:</p>
-                  ${links.map((link: string) => `
-                    <a href="${link}" target="_blank" rel="noopener noreferrer" 
-                       style="display: block; margin: 2px 0; color: #0066cc; font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                      ${link.includes('linkedin') ? '💼 LinkedIn' :
-            link.includes('twitter') || link.includes('x.com') ? '🐦 Twitter' :
-              link.includes('crunchbase') ? '📊 Crunchbase' : '🔗 Link'}
-                    </a>
-                  `).join('')}
-                </div>
-              ` : ''}
-            </div>
-          `;
-
-        const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
+        // Prepare VC data for sidebar
+        const vcData = {
+          type: 'vc',
+          name,
+          firm,
+          location,
+          match_score,
+          links,
+          coordinates
+        };
 
         // Create a custom VC marker element (different color to distinguish from audience)
         const el = document.createElement("div");
@@ -431,15 +530,20 @@ export default function AudienceMap({
 
         const marker = new mapboxgl.Marker({ element: el, draggable: false })
           .setLngLat([coordinates.longitude, coordinates.latitude])
-          .setPopup(popup)
           .addTo(map);
+
+        // Add click handler for sidebar
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          handlePinClick(vcData);
+        });
 
         vcMarkersRef.current.push(marker);
       });
     } catch (error) {
       console.error("Error displaying VCs:", error);
     }
-  }, [showVCs, vcsData]);
+  }, [showVCs, vcsData, handlePinClick]);
 
   /** Handle Competitor toggle - display competitors as pins */
   useEffect(() => {
@@ -463,30 +567,16 @@ export default function AudienceMap({
 
         if (!coordinates?.latitude || !coordinates?.longitude) return;
 
-        // Create popup HTML with competitor information
-        const popupHtml = `
-            <div style="min-width:250px; max-width:300px;">
-              <h3 style="margin:0 0 8px 0; font-size: 17px; font-weight: 700; color: #ef4444;">${company_name || 'N/A'}</h3>
-              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Location:</strong> ${location || 'N/A'}</p>
-              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Founded:</strong> ${date_founded || 'Unknown'}</p>
-              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Threat Score:</strong> ${threat_score || 0}/10</p>
-              ${links && links.length > 0 ? `
-                <div style="margin-top: 8px;">
-                  <p style="margin: 4px 0; font-weight: 600; font-size: 14px; color: #333;">Links:</p>
-                  ${links.map((link: string) => `
-                    <a href="${link}" target="_blank" rel="noopener noreferrer" 
-                       style="display: block; margin: 2px 0; color: #0066cc; font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                      ${link.includes('crunchbase') ? '📊 Crunchbase' :
-            link.includes('techcrunch') ? '📰 TechCrunch' :
-              link.includes('producthunt') ? '🚀 Product Hunt' : '🔗 Website'}
-                    </a>
-                  `).join('')}
-                </div>
-              ` : ''}
-            </div>
-          `;
-
-        const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
+        // Prepare competitor data for sidebar
+        const competitorData = {
+          type: 'competitor',
+          company_name,
+          location,
+          date_founded,
+          threat_score,
+          links,
+          coordinates
+        };
 
         // Create a custom competitor marker element (red color to distinguish)
         const el = document.createElement("div");
@@ -508,15 +598,20 @@ export default function AudienceMap({
 
         const marker = new mapboxgl.Marker({ element: el, draggable: false })
           .setLngLat([coordinates.longitude, coordinates.latitude])
-          .setPopup(popup)
           .addTo(map);
+
+        // Add click handler for sidebar
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          handlePinClick(competitorData);
+        });
 
         competitorMarkersRef.current.push(marker);
       });
     } catch (error) {
       console.error("Error displaying competitors:", error);
     }
-  }, [showCompetitors, competitorsData]);
+  }, [showCompetitors, competitorsData, handlePinClick]);
 
   /** Handle Cofounder toggle - display cofounders as pins */
   useEffect(() => {
@@ -541,30 +636,15 @@ export default function AudienceMap({
 
         if (!coordinates?.latitude || !coordinates?.longitude) return;
 
-        // Create popup HTML with cofounder information
-        const popupHtml = `
-            <div style="min-width:250px; max-width:300px;">
-              <h3 style="margin:0 0 8px 0; font-size: 17px; font-weight: 700; color: #8b5cf6;">${name || 'N/A'}</h3>
-              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Location:</strong> ${location || 'N/A'}</p>
-              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Match Score:</strong> ${match_score || 0}/10</p>
-              ${links && links.length > 0 ? `
-                <div style="margin-top: 8px;">
-                  <p style="margin: 4px 0; font-weight: 600; font-size: 14px; color: #333;">Links:</p>
-                  ${links.map((link: string) => `
-                    <a href="${link}" target="_blank" rel="noopener noreferrer" 
-                       style="display: block; margin: 2px 0; color: #0066cc; font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                      ${link.includes('linkedin') ? '💼 LinkedIn' :
-            link.includes('twitter') || link.includes('x.com') ? '🐦 Twitter' :
-              link.includes('github') ? '💻 GitHub' :
-                link.includes('angellist') ? '👼 AngelList' : '🔗 Link'}
-                    </a>
-                  `).join('')}
-                </div>
-              ` : ''}
-            </div>
-          `;
-
-        const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
+        // Prepare cofounder data for sidebar
+        const cofounderData = {
+          type: 'cofounder',
+          name,
+          location,
+          match_score,
+          links,
+          coordinates
+        };
 
         // Create a custom cofounder marker element (purple color to distinguish)
         const el = document.createElement("div");
@@ -586,15 +666,28 @@ export default function AudienceMap({
 
         const marker = new mapboxgl.Marker({ element: el, draggable: false })
           .setLngLat([coordinates.longitude, coordinates.latitude])
-          .setPopup(popup)
           .addTo(map);
+
+        // Add click handler for sidebar
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          handlePinClick(cofounderData);
+        });
 
         cofounderMarkersRef.current.push(marker);
       });
     } catch (error) {
       console.error("Error displaying cofounders:", error);
     }
-  }, [showCofounders, cofoundersData]);
+  }, [showCofounders, cofoundersData, handlePinClick]);
+
+  /** Handle demographics data changes */
+  useEffect(() => {
+    if (demographicsData && mapRef.current) {
+      console.log("Demographics data received, loading into map:", demographicsData);
+      loadDemographicsData(demographicsData);
+    }
+  }, [demographicsData, loadDemographicsData]);
 
   /** Handle demographics toggle - show heatmap when demographics is enabled */
   useEffect(() => {
@@ -602,6 +695,10 @@ export default function AudienceMap({
     if (!map) return;
 
     if (showDemographics && heatmapData) {
+      // Clear any existing markers when demographics is enabled
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+
       // Remove existing heatmap first
       removeHeatmapLayer();
 
@@ -658,6 +755,15 @@ export default function AudienceMap({
       )}
 
       <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
+
+      {/* Unified Pin Sidebar */}
+      <UnifiedPinSidebar
+        pinData={selectedPinData}
+        isVisible={sidebarVisible}
+        onClose={handleSidebarClose}
+        position="left"
+        width="360px"
+      />
     </div>
   );
 }

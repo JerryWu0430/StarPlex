@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowUpIcon, LoaderIcon, PlusIcon, CheckCircle2, XCircle } from "lucide-react";
 import { findCompetitors, findVCs, findCofounders, getAudienceMap, type CompetitorResponse, type VCResponse, type CofounderResponse } from "@/lib/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import type { Feature } from "geojson";
 
 type LoadingStatus = "competitors" | "vcs" | "cofounders" | "demographics" | null;
 type AlertType = { type: "success" | "error"; message: string } | null;
@@ -35,10 +36,43 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
   const [currentLoading, setCurrentLoading] = useState<LoadingStatus>(null);
   const [alert, setAlert] = useState<AlertType>(null);
 
+  // Sidebar state for heatmap details
+  const [isSidebarVisible, setIsSidebarVisible] = useState(false);
+  const [selectedHeatmapFeature, setSelectedHeatmapFeature] = useState<Feature | null>(null);
+
   const startupIdea = initialQuery?.trim() || "";
 
   // Helper function to add delay between API calls
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  // Handle heatmap click to show sidebar with feature details
+  const handleHeatmapClick = (feature: Feature | null) => {
+    setSelectedHeatmapFeature(feature);
+    setIsSidebarVisible(!!feature);
+  };
+
+  // Handle sidebar close
+  const handleSidebarClose = () => {
+    setIsSidebarVisible(false);
+    setSelectedHeatmapFeature(null);
+  };
+
+  // Handle Escape key to close sidebar
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isSidebarVisible) {
+        handleSidebarClose();
+      }
+    };
+
+    if (isSidebarVisible) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSidebarVisible]);
 
   // Fetch ALL data sequentially - one at a time with delays to avoid rate limits
   useEffect(() => {
@@ -69,7 +103,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
         setTimeout(() => setAlert(null), 3000);
       }
       setCurrentLoading(null);
-      
+
       // Wait 3 seconds before next API call to avoid rate limits
       await sleep(3000);
 
@@ -88,7 +122,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
         setTimeout(() => setAlert(null), 3000);
       }
       setCurrentLoading(null);
-      
+
       // Wait 3 seconds before next API call
       await sleep(3000);
 
@@ -107,7 +141,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
         setTimeout(() => setAlert(null), 3000);
       }
       setCurrentLoading(null);
-      
+
       // Wait 3 seconds before next API call
       await sleep(3000);
 
@@ -116,6 +150,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
       try {
         console.log("Fetching demographics for:", startupIdea);
         const demographicsResult = await getAudienceMap(startupIdea);
+        console.log("Demographics result:", demographicsResult);
         setDemographicsData(demographicsResult);
         setAlert({ type: "success", message: "Customer demographics loaded" });
         setTimeout(() => setAlert(null), 3000);
@@ -179,27 +214,27 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
       )}
 
       <div className="absolute top-4 right-4 z-10 grid grid-cols-1 gap-2">
-        <FieldSwitch 
-          title="Market Competitors" 
-          description="Who's copying your genius idea?" 
+        <FieldSwitch
+          title="Market Competitors"
+          description="Who's copying your genius idea?"
           checked={showCompetitors}
           onCheckedChange={setShowCompetitors}
         />
-        <FieldSwitch 
-          title="Customer Demographics" 
-          description="Where's the market?" 
+        <FieldSwitch
+          title="Customer Demographics"
+          description="Where's the market?"
           checked={showDemographics}
           onCheckedChange={setShowDemographics}
         />
-        <FieldSwitch 
-          title="VC Victims" 
-          description="Who is willing to throw you money?" 
+        <FieldSwitch
+          title="VC Victims"
+          description="Who is willing to throw you money?"
           checked={showVCs}
           onCheckedChange={setShowVCs}
         />
-        <FieldSwitch 
-          title="Co-ballers" 
-          description="Who's willing to scale a B2B AI SaaS startup?" 
+        <FieldSwitch
+          title="Co-ballers"
+          description="Who's willing to scale a B2B AI SaaS startup?"
           checked={showCofounders}
           onCheckedChange={setShowCofounders}
         />
@@ -238,7 +273,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
       </div>
 
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-full max-w-xl opacity-95">
-      <InputGroup>
+        <InputGroup>
           <InputGroupTextarea placeholder="Ask, Search or Chat..." />
           <InputGroupAddon align="block-end">
             <InputGroupButton
@@ -263,7 +298,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
                 <DropdownMenuItem>Co-ballers</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <InputGroupText className="ml-auto"></InputGroupText> 
+            <InputGroupText className="ml-auto"></InputGroupText>
             <Separator orientation="vertical" className="!h-4" />
             <InputGroupButton
               variant="default"
@@ -275,10 +310,10 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
               <span className="sr-only">Send</span>
             </InputGroupButton>
           </InputGroupAddon>
-      </InputGroup>   
+        </InputGroup>
       </div>
       <div className="absolute inset-0 w-full h-full">
-        <AudienceMap 
+        <AudienceMap
           showVCs={showVCs}
           showCompetitors={showCompetitors}
           showDemographics={showDemographics}
@@ -287,6 +322,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
           vcsData={vcsData}
           cofoundersData={cofoundersData}
           demographicsData={demographicsData}
+          onHeatmapClick={handleHeatmapClick}
         />
       </div>
     </div>

@@ -116,6 +116,10 @@ class CompetitorResponse(BaseModel):
     timestamp: str
     summary: Dict
 
+# Pydantic models for audience map endpoint
+class AudienceMapRequest(BaseModel):
+    startup_idea: str
+
 # Pydantic models for pitch deck endpoint
 class PitchDeckRequest(BaseModel):
     idea: str
@@ -148,21 +152,8 @@ async def root():
         }
     }
 
-@app.get("/audience-map")
-async def get_audience_map(
-    startup_idea: str = Query(
-        default="An app that helps you find the best lunch deals in your area depending on your dietary restrictions and fitness goals",
-        description="Description of your startup idea"
-    ),
-    target_description: str = Query(
-        default="A fitness-conscious young professional who is looking for a healthy lunch deal near their workplace. They probably want something high protein and low carb.",
-        description="Description of your target audience"
-    ),
-    country: str = Query(
-        default=None,
-        description="Country code to limit search (e.g., 'US', 'UK', 'CA')"
-    )
-):
+@app.post("/audience-map")
+async def get_audience_map(request: AudienceMapRequest):
     """
     Generate GeoJSON heatmap of locations with target audience
     
@@ -171,9 +162,9 @@ async def get_audience_map(
     """
     try:
         query_params = {
-            "startup_idea": startup_idea,
-            "target_description": target_description,
-            "country": country
+            "startup_idea": request.startup_idea,
+            "target_description": f"Target audience for: {request.startup_idea}",
+            "country": None
         }
         
         geojson = await pipeline.generate_audience_map(query_params)
