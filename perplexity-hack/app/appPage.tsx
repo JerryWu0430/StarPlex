@@ -22,10 +22,11 @@ interface AppPageProps {
 }
 
 export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratingPitchDeck = false }: AppPageProps) {
-  const [showVCs, setShowVCs] = useState(false);
-  const [showCompetitors, setShowCompetitors] = useState(false);
-  const [showDemographics, setShowDemographics] = useState(false);
-  const [showCofounders, setShowCofounders] = useState(false);
+  // all data is shown by default
+  const [showVCs, setShowVCs] = useState(true);
+  const [showCompetitors, setShowCompetitors] = useState(true);
+  const [showDemographics, setShowDemographics] = useState(true);
+  const [showCofounders, setShowCofounders] = useState(true);
 
   // Cached data
   const [competitorsData, setCompetitorsData] = useState<CompetitorResponse | null>(null);
