@@ -2,7 +2,13 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
 
-export function OrbInput({ onFocusChange }: { onFocusChange?: (focused: boolean) => void }) {
+export function OrbInput({ 
+  onFocusChange,
+  onEnter 
+}: { 
+  onFocusChange?: (focused: boolean) => void;
+  onEnter?: (value: string) => void;
+}) {
   const [value, setValue] = useState("")
   const [isFocused, setIsFocused] = useState(false)
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
@@ -113,6 +119,11 @@ export function OrbInput({ onFocusChange }: { onFocusChange?: (focused: boolean)
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && value.trim()) {
+                onEnter?.(value)
+              }
+            }}
             onFocus={() => {
               setIsFocused(true)
               onFocusChange?.(true)
