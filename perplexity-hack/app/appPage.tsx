@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import AudienceMap from "@/components/AudienceMap";
-import FloatingDetailSidebar from "@/components/FloatingDetailSidebar";
 import { FieldSwitch } from "@/components/fieldSwitch";
 import { InputGroup, InputGroupButton, InputGroupAddon, InputGroupText, InputGroupTextarea, InputGroupInput } from "@/components/ui/input-group";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -313,92 +312,6 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
           </InputGroupAddon>
         </InputGroup>
       </div>
-
-      {/* Floating Detail Sidebar for heatmap features */}
-      <FloatingDetailSidebar
-        isVisible={isSidebarVisible}
-        onClose={handleSidebarClose}
-        position="left"
-        width="400px"
-      >
-        {selectedHeatmapFeature && (
-          <div className="space-y-4">
-            <div className="border-b border-gray-700/50 pb-4">
-              <h4 className="text-lg font-semibold text-white mb-2">
-                {selectedHeatmapFeature.properties?.name || "Heatmap Point"}
-              </h4>
-              {selectedHeatmapFeature.properties?.display_name && (
-                <p className="text-sm text-gray-300 mb-2">
-                  {selectedHeatmapFeature.properties.display_name}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              {selectedHeatmapFeature.properties?.description && (
-                <div>
-                  <h5 className="text-sm font-medium text-gray-200 mb-1">Description</h5>
-                  <p className="text-sm text-gray-300">
-                    {selectedHeatmapFeature.properties.description}
-                  </p>
-                </div>
-              )}
-
-              {selectedHeatmapFeature.properties?.target_fit && (
-                <div>
-                  <h5 className="text-sm font-medium text-gray-200 mb-1">Target Fit</h5>
-                  <p className="text-sm text-gray-300">
-                    {selectedHeatmapFeature.properties.target_fit}
-                  </p>
-                </div>
-              )}
-
-              {selectedHeatmapFeature.properties?.weight && (
-                <div>
-                  <h5 className="text-sm font-medium text-gray-200 mb-1">Weight</h5>
-                  <p className="text-sm text-gray-300">
-                    {selectedHeatmapFeature.properties.weight}
-                  </p>
-                </div>
-              )}
-
-              {selectedHeatmapFeature.properties?.area_code && (
-                <div>
-                  <h5 className="text-sm font-medium text-gray-200 mb-1">Area Code</h5>
-                  <p className="text-sm text-gray-300">
-                    {selectedHeatmapFeature.properties.area_code}
-                  </p>
-                </div>
-              )}
-
-              {selectedHeatmapFeature.properties?.borough && (
-                <div>
-                  <h5 className="text-sm font-medium text-gray-200 mb-1">Borough</h5>
-                  <p className="text-sm text-gray-300">
-                    {selectedHeatmapFeature.properties.borough}
-                  </p>
-                </div>
-              )}
-
-              {selectedHeatmapFeature.properties?.country && (
-                <div>
-                  <h5 className="text-sm font-medium text-gray-200 mb-1">Country</h5>
-                  <p className="text-sm text-gray-300">
-                    {selectedHeatmapFeature.properties.country}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="pt-4 border-t border-gray-700/50">
-              <p className="text-xs text-gray-500">
-                Click on the map to explore different areas
-              </p>
-            </div>
-          </div>
-        )}
-      </FloatingDetailSidebar>
-
       <div className="absolute inset-0 w-full h-full">
         <AudienceMap
           showVCs={showVCs}
