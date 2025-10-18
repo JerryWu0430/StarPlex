@@ -2,6 +2,7 @@ from perplexity import Perplexity
 from pydantic import BaseModel
 from typing import List
 import json
+import hashlib
 
 class Location(BaseModel):
     name: str
@@ -17,14 +18,27 @@ class PerplexityAudienceAnalyzer:
         self.client = Perplexity()
         # Simple cache for API results
         self._cache = {}
+    
+    def clear_cache(self):
+        """Clear the cache to force fresh API calls"""
+        self._cache = {}
 
     async def find_target_locations(self, business_type: str, target_audience: str, region: str = "global") -> List[Location]:
         """Query Perplexity for locations with target demographic"""
         
-        # Check cache first
-        cache_key = f"{business_type}_{target_audience}_{region}"
+        # Check cache first - create a more specific cache key that includes all parameters
+        # Use hash to handle special characters and make cache key more reliable
+        cache_input = f"{business_type.strip()}|{target_audience.strip()}|{region.strip()}"
+        cache_key = hashlib.md5(cache_input.encode()).hexdigest()
+        print(f"Looking for cache key: {cache_key}")
+        print(f"Cache input: {cache_input}")
+        print(f"Available cache keys: {list(self._cache.keys())}")
+        
         if cache_key in self._cache:
+            print(f"Cache hit for key: {cache_key}")
             return self._cache[cache_key]
+        
+        print(f"Cache miss - making API call for: {business_type}")
         
         prompt = f"""
         I'm building a startup that is: {business_type}
@@ -113,6 +127,7 @@ class PerplexityAudienceAnalyzer:
                 
                 # Cache the result
                 self._cache[cache_key] = locations
+                print(f"Cached result for key: {cache_key}")
                 return locations
             else:
                 # Fallback: return some default locations
@@ -124,50 +139,26 @@ class PerplexityAudienceAnalyzer:
             self._cache[cache_key] = error_result
             return error_result
     
-    #def _get_fallback_locations(self, region: str) -> List[Location]:
-    #    """Return fallback locations when Perplexity API fails"""
-    #    fallback_locations = {
-    #        "global": [
-    #            Location(
-    #                name="Shoreditch",  
-    #                area_code="E1",
-    #                borough="Hackney",
-    #                country="UK",
-    #                description="Trendy tech hub with young professionals and startups",
-    #                target_audience_fit="High concentration of tech workers and entrepreneurs",
-    #                fitness_score=8.5
-    #            ),
-    #            Location(
-    #                name="Williamsburg",
-    #                area_code="11211",
-    #                borough="Brooklyn",
-    #                country="US",
-    #                description="Hip neighborhood with young professionals and creatives",
-    #                target_audience_fit="Dense population of young urban professionals",
-    #                fitness_score=8.0
-    #            )
-    #        ],
-    #        "london": [
-    #            Location(
-    #                name="Islington",
-    #                area_code="N1",
-    #                borough="Islington",
-    #                country="UK",
-    #                description="Trendy neighbourhood with young professionals and cafes",
-    #                target_audience_fit="High concentration of health-conscious young professionals",
-    #                fitness_score=8.5
-    #            ),
-    #            Location(
-    #                name="Camden",
-    #                area_code="NW1",
-    #                borough="Camden",
-    #                country="UK",
-    #                description="Vibrant area with diverse young population",
-    #                target_audience_fit="Creative professionals and health-conscious millennials",
-    #                fitness_score=7.5
-    #            )
-    #        ]
-    #    }
-        
-    #    region_key = region.lower() if region.lower() in fallback_locations else "global"
-    #    return fallback_locations[region_key]
+    def _get_fallback_locations(self, region: str = "global") -> List[Location]:
+        """Return fallback locations when API fails"""
+        fallback_locations = [
+            Location(
+                name="Silicon Valley",
+                area_code="94000",
+                borough="Santa Clara County",
+                country="United States",
+                description="Tech hub with high concentration of startups and tech professionals",
+                target_audience_fit="High concentration of tech-savvy professionals and entrepreneurs",
+                fitness_score=8.0
+            ),
+            Location(
+                name="Shoreditch",
+                area_code="E1",
+                borough="Hackney",
+                country="United Kingdom",
+                description="Trendy tech district in London with many startups and creative professionals",
+                target_audience_fit="Young professionals and tech workers in creative industries",
+                fitness_score=7.5
+            )
+        ]
+        return fallback_locations

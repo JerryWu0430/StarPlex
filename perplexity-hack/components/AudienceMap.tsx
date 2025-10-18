@@ -88,6 +88,150 @@ export default function AudienceMap({
   const [styleUrl, setStyleUrl] = useState<string>(initialStyle);
   const [heatmapData, setHeatmapData] = useState<AudienceCollection | null>(null);
 
+  /** Load demographics data and update map */
+  const loadDemographicsData = useCallback((data: AudienceCollection) => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Store data for heatmap
+    setHeatmapData(data);
+
+    // Fit bounds / center
+    const coords = data.features.map((f) => f.geometry.coordinates);
+    if (coords.length > 1) {
+      const bounds = new LngLatBounds(coords[0] as [number, number], coords[0] as [number, number]);
+      coords.forEach((c) => bounds.extend(c as [number, number]));
+      map.fitBounds(bounds, { padding: 100, duration: 1200 });
+    } else if (coords.length === 1) {
+      map.setCenter(coords[0] as [number, number]);
+      map.setZoom(10);
+    }
+
+    // Clear existing markers
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
+
+    // Add markers + popups (only if demographics is not enabled - we show heatmap instead)
+    if (!showDemographics) {
+      data.features.forEach((feature: AudienceFeature) => {
+        const { coordinates } = feature.geometry;
+        const props = feature.properties ?? {};
+
+        const popupHtml = `
+          <div style="min-width:200px">
+            <h3 style="margin:0 0 6px 0">${props.name ?? ""}</h3>
+            ${props.description ? `<p>${props.description}</p>` : ""}
+            ${props.target_fit ? `<p><strong>Target fit:</strong> ${props.target_fit}</p>` : ""}
+            ${props.display_name ? `<p style="font-size:0.8em;color:#555">${props.display_name}</p>` : ""}
+          </div>`;
+
+        const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
+
+        const marker = new mapboxgl.Marker({ draggable: false })
+          .setLngLat(coordinates as [number, number])
+          .setPopup(popup)
+          .addTo(map);
+
+        markersRef.current.push(marker);
+      });
+    } else {
+      // Clear any existing markers when demographics is enabled
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+    }
+
+    // Add heatmap if demographics enabled
+    if (showDemographics) {
+      // Remove existing heatmap first
+      if (map.getLayer("audience-heatmap-layer")) {
+        map.removeLayer("audience-heatmap-layer");
+      }
+      if (map.getSource("audience-heatmap")) {
+        map.removeSource("audience-heatmap");
+      }
+
+      // Add heatmap source
+      map.addSource("audience-heatmap", {
+        type: "geojson",
+        data: data,
+      });
+
+      // Add heatmap layer
+      if (!map.getLayer("audience-heatmap-layer")) {
+        map.addLayer({
+          id: "audience-heatmap-layer",
+          type: "heatmap",
+          source: "audience-heatmap",
+          maxzoom: 15,
+          paint: {
+            "heatmap-weight": [
+              "interpolate",
+              ["linear"],
+              ["get", "weight"],
+              0,
+              0,
+              1,
+              1,
+            ],
+            "heatmap-intensity": [
+              "interpolate",
+              ["linear"]o,
+              ["zoom"],
+              0,
+              1,
+              15,
+              3,
+            ],
+            "heatmap-color": [
+              "interpolate",
+              ["linear"],
+              ["heatmap-density"],
+              0,
+              "rgba(0, 0, 255, 0)",
+              0.1,
+              "rgb(0, 0, 255)",
+              0.3,
+              "rgb(0, 255, 0)",
+              0.5,
+              "rgb(255, 255, 0)",
+              0.7,
+              "rgb(255, 165, 0)",
+              1,
+              "rgb(255, 0, 0)",
+            ],
+            "heatmap-radius": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              0,
+              20,
+              15,
+              60,
+            ],
+            "heatmap-opacity": 0.6,
+          },
+        });
+
+        // Add cursor pointer for clickable heatmap
+        if (onHeatmapClick) {
+          map.getCanvas().style.cursor = "pointer";
+        }
+
+        // Add click interactions for heatmap
+        if (onHeatmapClick) {
+          map.on("click", "audience-heatmap-layer", (e) => {
+            e.preventDefault();
+            e.originalEvent.stopPropagation();
+            if (e.features && e.features.length > 0) {
+              const feature = e.features[0] as unknown as AudienceFeature;
+              onHeatmapClick(feature);
+            }
+          });
+        }
+      }
+    }
+  }, [showDemographics]);
+
   /** Add heatmap layer for audience data */
   const addHeatmapLayer = useCallback(() => {
     const map = mapRef.current;
@@ -273,75 +417,12 @@ export default function AudienceMap({
       try {
         ensureGlobeProjection(); // make sure initial style starts as globe too
 
-        // Use demographics data from props if available, otherwise fetch from endpoint
-        let data: AudienceCollection;
+        // If demographics data is available, load it immediately
         if (demographicsData) {
-          data = demographicsData;
-        } else {
-          const resp = await fetch("http://localhost:8000" + endpoint);
-          if (!resp.ok) throw new Error(`Fetch failed: ${resp.status} ${resp.statusText}`);
-          data = await resp.json();
-        }
-
-        // Store data for heatmap
-        setHeatmapData(data);
-
-        // Fit bounds / center
-        const coords = data.features.map((f) => f.geometry.coordinates);
-        if (coords.length > 1) {
-          const bounds = new LngLatBounds(coords[0] as [number, number], coords[0] as [number, number]);
-          coords.forEach((c) => bounds.extend(c as [number, number]));
-          map.fitBounds(bounds, { padding: 100, duration: 1200 });
-        } else if (coords.length === 1) {
-          map.setCenter(coords[0] as [number, number]);
-          map.setZoom(10);
-        }
-
-        // Clear existing markers
-        markersRef.current.forEach((m) => m.remove());
-        markersRef.current = [];
-
-        // Add markers + popups (only if demographics is not enabled - we show heatmap instead)
-        if (!showDemographics) {
-          data.features.forEach((feature: AudienceFeature) => {
-            const { coordinates } = feature.geometry;
-            const props = feature.properties ?? {};
-
-            const popupHtml = `
-              <div style="min-width:200px">
-                <h3 style="margin:0 0 6px 0">${props.name ?? ""}</h3>
-                ${props.description ? `<p>${props.description}</p>` : ""}
-                ${props.target_fit ? `<p><strong>Target fit:</strong> ${props.target_fit}</p>` : ""}
-                ${props.display_name ? `<p style="font-size:0.8em;color:#555">${props.display_name}</p>` : ""}
-              </div>`;
-
-            const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
-
-            const marker = new mapboxgl.Marker({ draggable: false })
-              .setLngLat(coordinates as [number, number])
-              .setPopup(popup)
-              .addTo(map);
-
-            markersRef.current.push(marker);
-          });
-        }
-
-        // Add heatmap if demographics enabled
-        if (showDemographics) {
-          // Remove existing heatmap first
-          removeHeatmapLayer();
-
-          // Add heatmap source
-          map.addSource("audience-heatmap", {
-            type: "geojson",
-            data: data,
-          });
-
-          // Add heatmap layer
-          addHeatmapLayer();
+          loadDemographicsData(demographicsData);
         }
       } catch (err) {
-        console.error("Error fetching audience map:", err);
+        console.error("Error in map load:", err);
       }
     });
 
@@ -596,12 +677,24 @@ export default function AudienceMap({
     }
   }, [showCofounders, cofoundersData]);
 
+  /** Handle demographics data changes */
+  useEffect(() => {
+    if (demographicsData && mapRef.current) {
+      console.log("Demographics data received, loading into map:", demographicsData);
+      loadDemographicsData(demographicsData);
+    }
+  }, [demographicsData, loadDemographicsData]);
+
   /** Handle demographics toggle - show heatmap when demographics is enabled */
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     if (showDemographics && heatmapData) {
+      // Clear any existing markers when demographics is enabled
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+
       // Remove existing heatmap first
       removeHeatmapLayer();
 
