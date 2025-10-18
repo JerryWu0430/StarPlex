@@ -14,6 +14,9 @@ from geojson_generator import GeoJSONPipeline
 from cofounder import find_cofounders_api
 # Import VC finder function
 from vc import find_vcs_api
+# Import market analyzer
+# Import comprehensive market analyzer
+from comprehensive_market_analyzer import analyze_market_comprehensive_api
 # Import competitor finder function
 from competitors import find_competitors_api
 # Import pitch deck generator function
@@ -134,6 +137,7 @@ async def root():
             "/find-cofounders": "Find potential cofounders for your startup idea",
             "/find-vcs": "Find venture capitalists and investors for your startup",
             "/find-competitors": "Find competing companies in your market space",
+            "/comprehensive-market-analysis": "Comprehensive market analysis with search trends and detailed insights"
             "/generate-pitch-deck": "Generate investor pitch deck for your startup idea"
         }
     }
@@ -288,6 +292,55 @@ async def find_competitors(request: CompetitorRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error finding competitors: {str(e)}")
 
+
+# Pydantic models for comprehensive market analysis endpoint
+class ComprehensiveMarketAnalysisRequest(BaseModel):
+    user_prompt: str
+    region: Optional[str] = ""
+
+class ComprehensiveMarketAnalysisResponse(BaseModel):
+    success: bool
+    user_prompt: str
+    region: str
+    industry_keywords_extracted: List[str]
+    google_trends_data: Dict
+    comprehensive_analysis: Dict
+    timestamp: str
+    analysis_type: str
+
+
+@app.post("/comprehensive-market-analysis", response_model=ComprehensiveMarketAnalysisResponse)
+async def comprehensive_market_analysis(request: ComprehensiveMarketAnalysisRequest):
+    """
+    Comprehensive market analysis with search trends and detailed insights
+    
+    Parameters:
+    - user_prompt: Your startup idea (e.g., "I am making a healthcare startup")
+    - region: Optional region code (e.g., "US", "UK", "CA") for localized trends
+    
+    Returns:
+    - JSON with comprehensive market analysis including search trends, market overview, competitive landscape, etc.
+    """
+    try:
+        if not request.user_prompt.strip():
+            raise HTTPException(status_code=400, detail="user_prompt cannot be empty")
+        
+        # Call the comprehensive market analyzer
+        result = await analyze_market_comprehensive_api(request.user_prompt, request.region)
+        
+        return ComprehensiveMarketAnalysisResponse(
+            success=True,
+            user_prompt=result["user_prompt"],
+            region=result["region"],
+            industry_keywords_extracted=result["industry_keywords_extracted"],
+            google_trends_data=result["google_trends_data"],
+            comprehensive_analysis=result["comprehensive_analysis"],
+            timestamp=result["timestamp"],
+            analysis_type=result["analysis_type"]
+        )
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error in comprehensive market analysis: {str(e)}")
 @app.post("/generate-pitch-deck", response_model=PitchDeckResponse)
 async def generate_pitch_deck_endpoint(request: PitchDeckRequest):
     """
