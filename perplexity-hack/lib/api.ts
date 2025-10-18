@@ -181,3 +181,119 @@ export async function getAudienceMap(startupIdea: string) {
   });
 }
 
+// New API interfaces
+export interface KeywordExtractionResponse {
+  success: boolean;
+  user_prompt: string;
+  industry_keywords_extracted: string[];
+  market_analysis?: {
+    how_AI_proof_it_is: number;
+    market_cap_estimation: number;
+  };
+  timestamp: string;
+}
+
+export interface TrendsAnalysisResponse {
+  success: boolean;
+  region: string;
+  keywords: string[];
+  google_trends_data: {
+    trends_data: Array<{
+      year: number;
+      [key: string]: any; // For query_sum fields like "healthcare_sum", "medical_sum", etc.
+    }>;
+    queries_analyzed: string[];
+    error?: string;
+  };
+  timestamp: string;
+}
+
+// Legacy interface for backward compatibility
+export interface ComprehensiveMarketAnalysisResponse {
+  success: boolean;
+  user_prompt: string;
+  region: string;
+  industry_keywords_extracted: string[];
+  google_trends_data: {
+    trends_data: Array<{
+      year: number;
+      [key: string]: any; // For query_sum fields like "healthcare_sum", "medical_sum", etc.
+    }>;
+    queries_analyzed: string[];
+    error?: string;
+  };
+  comprehensive_analysis: any;
+  timestamp: string;
+  analysis_type: string;
+}
+
+// New API functions
+export async function extractKeywords(userPrompt: string): Promise<KeywordExtractionResponse> {
+  return fetchWithRetry(async () => {
+    const response = await fetch(`${API_BASE_URL}/extract-keywords`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_prompt: userPrompt,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(`Failed to extract keywords: ${errorData.detail || response.statusText}`);
+    }
+
+    return response.json();
+  });
+}
+
+export async function analyzeTrends(keywords: string[], region: string): Promise<TrendsAnalysisResponse> {
+  return fetchWithRetry(async () => {
+    const response = await fetch(`${API_BASE_URL}/analyze-trends`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        keywords: keywords,
+        region: region,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(`Failed to analyze trends: ${errorData.detail || response.statusText}`);
+    }
+
+    return response.json();
+  });
+}
+
+// Legacy function for backward compatibility
+export async function getComprehensiveMarketAnalysis(
+  userPrompt: string,
+  region: string = ""
+): Promise<ComprehensiveMarketAnalysisResponse> {
+  return fetchWithRetry(async () => {
+    const response = await fetch(`${API_BASE_URL}/comprehensive-market-analysis`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_prompt: userPrompt,
+        region: region,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(`Failed to get comprehensive market analysis: ${errorData.detail || response.statusText}`);
+    }
+
+    return response.json();
+  });
+}
+
