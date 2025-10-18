@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { X, ExternalLink, MapPin, Building2, Users, TrendingUp, Calendar, Star, AlertTriangle, Link as LinkIcon } from "lucide-react";
+import { X, ExternalLink, MapPin, Building2, Users, TrendingUp, Calendar, Star, AlertTriangle, Link as LinkIcon, Search } from "lucide-react";
 
 // Types for different pin data
 interface VCPinData {
@@ -97,6 +97,22 @@ const getLinkInfo = (url: string) => {
   if (url.includes('techcrunch')) return { icon: '📰', label: 'TechCrunch' };
   if (url.includes('producthunt')) return { icon: '🚀', label: 'Product Hunt' };
   return { icon: '🔗', label: 'Website' };
+};
+
+// Helper function to generate Perplexity search query from pin data
+const generatePerplexityQuery = (pinData: PinData): string => {
+  switch (pinData.type) {
+    case 'vc':
+      return `${pinData.name} ${pinData.firm} venture capital investment thesis portfolio companies`;
+    case 'competitor':
+      return `${pinData.company_name} company business model products services market position`;
+    case 'cofounder':
+      return `${pinData.name} background expertise experience startups`;
+    case 'audience':
+      return `${pinData.name} demographics market analysis customer profile`;
+    default:
+      return '';
+  }
 };
 
 // Component for rendering links with sleek styling
@@ -478,6 +494,15 @@ export default function UnifiedPinSidebar({
     setIsPinned(false);
   };
 
+  // Handle Perplexity search
+  const handlePerplexitySearch = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!pinData) return;
+    const query = generatePerplexityQuery(pinData);
+    const searchUrl = `https://www.perplexity.ai/search?q=${encodeURIComponent(query)}`;
+    window.open(searchUrl, '_blank', 'noopener,noreferrer');
+  };
+
   const positionClasses = position === "left" ? "left-4" : "right-4";
   const transformClasses = position === "left"
     ? (isVisible ? "translate-x-0" : "-translate-x-full")
@@ -526,13 +551,48 @@ export default function UnifiedPinSidebar({
                   pinData.type === 'cofounder' ? 'Cofounder' : 'Audience'}
             </h3>
           </div>
-          <button
-            onClick={handleClose}
-            className="p-1 rounded-full hover:bg-black/50 transition-colors"
-            aria-label="Close sidebar"
-          >
-            <X className="w-4 h-4 text-gray-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePerplexitySearch}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all group ${
+                pinData.type === 'vc' 
+                  ? 'bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 hover:border-green-500/60' 
+                  : pinData.type === 'competitor'
+                  ? 'bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 hover:border-red-500/60'
+                  : pinData.type === 'cofounder'
+                  ? 'bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 hover:border-purple-500/60'
+                  : 'bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 hover:border-blue-500/60'
+              }`}
+              aria-label="Search in Perplexity"
+              title="Deep dive in Perplexity"
+            >
+              <Search className={`w-3.5 h-3.5 ${
+                pinData.type === 'vc' 
+                  ? 'text-green-400 group-hover:text-green-300' 
+                  : pinData.type === 'competitor'
+                  ? 'text-red-400 group-hover:text-red-300'
+                  : pinData.type === 'cofounder'
+                  ? 'text-purple-400 group-hover:text-purple-300'
+                  : 'text-blue-400 group-hover:text-blue-300'
+              }`} />
+              <span className={`text-xs font-medium ${
+                pinData.type === 'vc' 
+                  ? 'text-green-300 group-hover:text-green-200' 
+                  : pinData.type === 'competitor'
+                  ? 'text-red-300 group-hover:text-red-200'
+                  : pinData.type === 'cofounder'
+                  ? 'text-purple-300 group-hover:text-purple-200'
+                  : 'text-blue-300 group-hover:text-blue-200'
+              }`}>Perplexity</span>
+            </button>
+            <button
+              onClick={handleClose}
+              className="p-1 rounded-full hover:bg-black/50 transition-colors"
+              aria-label="Close sidebar"
+            >
+              <X className="w-4 h-4 text-gray-400" />
+            </button>
+          </div>
         </div>
 
         {/* Content area */}
@@ -541,19 +601,7 @@ export default function UnifiedPinSidebar({
           <GraphSupportPlaceholder pinType={pinData.type} />
         </div>
 
-        {/* Footer indicator */}
-        <div className="p-2 border-t border-gray-700/50 bg-gray-700/30">
-          <div className="flex items-center justify-center">
-            <div className={`
-              w-2 h-2 rounded-full
-              ${isPinned ? "bg-blue-500" : "bg-gray-500"}
-              transition-colors duration-200
-            `} />
-            <span className="ml-2 text-xs text-gray-400">
-              {isPinned ? "Pinned" : "Hover to expand"}
-            </span>
-          </div>
-        </div>
+        {/* Footer indicator - removed as it's not needed */}
       </div>
     </div>
   );
