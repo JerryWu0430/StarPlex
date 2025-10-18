@@ -183,5 +183,5 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
     return parts;
   };
 
-  return <div className="markdown-content">{parseMarkdown(content)}</div>;
+  return <div className="markdown-content text-xs">{parseMarkdown(content)}</div>;
 }

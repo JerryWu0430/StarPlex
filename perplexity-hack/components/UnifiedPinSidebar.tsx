@@ -744,7 +744,7 @@ export default function UnifiedPinSidebar({
         </div>
 
         {/* Content area */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
           <PinContent pinData={pinData} />
           <GraphSupportPlaceholder pinType={pinData.type} />
         </div>
