@@ -6,7 +6,7 @@ import { FieldSwitch } from "@/components/fieldSwitch";
 import { InputGroup, InputGroupButton, InputGroupAddon, InputGroupText, InputGroupTextarea, InputGroupInput } from "@/components/ui/input-group";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
-import { ArrowUpIcon, LoaderIcon, PlusIcon, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowUpIcon, LoaderIcon, PlusIcon, CheckCircle2, XCircle, ChevronDown } from "lucide-react";
 import { findCompetitors, findVCs, findCofounders, getAudienceMap, sendChatMessage, type CompetitorResponse, type VCResponse, type CofounderResponse, type ChatMessage } from "@/lib/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Feature } from "geojson";
@@ -101,12 +101,12 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
     }
   };
 
-  // Auto-expand chat when there are messages
+  // Auto-scroll to bottom when new messages arrive and chat is expanded
   useEffect(() => {
-    if (chatMessages.length > 0) {
-      setIsChatExpanded(true);
+    if (isChatExpanded && chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [chatMessages.length]);
+  }, [chatMessages, isChatExpanded]);
 
 
   // Handle heatmap click to show sidebar with feature details
@@ -334,54 +334,71 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
             </button>
           </div>
         )}
-        <div className="w-full max-w-xs">
-          <button
-            className="w-full border p-3 shadow-sm bg-card opacity-90 rounded-lg transition-all duration-200 hover:opacity-100 hover:shadow-md"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-left flex-1">
-                <div className="text-sm font-medium leading-snug">
-                  Market Analysis
-                </div>
-                <div className="text-xs text-muted-foreground leading-normal font-normal">
-                  Deep dive into market trends & insights
-                </div>
-              </div>
-              <svg className="h-5 w-5 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-          </button>
-        </div>
       </div>
+      
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-full max-w-xl opacity-95">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 w-full max-w-xl opacity-95">
+        {/* Collapsed chat indicator */}
+        {!isChatExpanded && chatMessages.length > 0 && (
+          <div className="mb-2 flex justify-center animate-in fade-in duration-200">
+            <button
+              onClick={() => setIsChatExpanded(true)}
+              className="px-4 py-2 bg-card/95 backdrop-blur-md rounded-full shadow-lg border border-border/50 hover:bg-card transition-all duration-200 flex items-center gap-2 hover:scale-105"
+            >
+              <span className="text-xs font-medium">
+                {chatMessages.length} message{chatMessages.length !== 1 ? 's' : ''}
+              </span>
+              <ChevronDown className="h-3 w-3 rotate-180" />
+            </button>
+          </div>
+        )}
+        
         {/* Chat messages - expand upward */}
         {isChatExpanded && chatMessages.length > 0 && (
-          <div
-            ref={chatContainerRef}
-            className="mb-2 max-h-96 overflow-y-auto bg-card/95 backdrop-blur rounded-lg p-4 shadow-lg flex flex-col-reverse"
-          >
-            {/* Messages in reverse order so newest is at bottom */}
-            {[...chatMessages].reverse().map((msg, idx) => (
-              <div
-                key={chatMessages.length - 1 - idx}
-                className={`mb-3 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-lg p-3 ${msg.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
-                    }`}
+          <div className="mb-2 animate-in slide-in-from-bottom-4 fade-in duration-300">
+            <div className="relative bg-card/98 backdrop-blur-md rounded-lg shadow-2xl border border-border/50">
+              {/* Collapse button */}
+              <div className="flex items-center justify-between px-4 py-2 border-b border-border/30">
+                <span className="text-xs text-muted-foreground font-medium">
+                  Chat Messages
+                </span>
+                <button
+                  onClick={() => setIsChatExpanded(false)}
+                  className="p-1 hover:bg-muted rounded-md transition-colors"
+                  aria-label="Collapse chat"
                 >
-                  {msg.role === "assistant" ? (
-                    <MarkdownRenderer content={msg.content} />
-                  ) : (
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                  )}
-                </div>
+                  <ChevronDown className="h-4 w-4" />
+                </button>
               </div>
-            ))}
+              
+              {/* Messages container */}
+              <div
+                ref={chatContainerRef}
+                className="max-h-96 overflow-y-auto p-4 flex flex-col-reverse custom-scrollbar"
+              >
+                {/* Messages in reverse order so newest is at bottom */}
+                {[...chatMessages].reverse().map((msg, idx) => (
+                  <div
+                    key={chatMessages.length - 1 - idx}
+                    className={`mb-3 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-lg p-3 ${
+                        msg.role === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted"
+                      }`}
+                    >
+                      {msg.role === "assistant" ? (
+                        <MarkdownRenderer content={msg.content} />
+                      ) : (
+                        <p className="text-xs whitespace-pre-wrap">{msg.content}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 

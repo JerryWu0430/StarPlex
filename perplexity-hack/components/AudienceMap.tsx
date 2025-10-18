@@ -374,7 +374,7 @@ export default function AudienceMap({
       bearing: 0,
       antialias: true,
       attributionControl: false,
-      logoPosition: 'bottom-left',
+      logoPosition: 'bottom-right',
     });
     mapRef.current = map;
 
