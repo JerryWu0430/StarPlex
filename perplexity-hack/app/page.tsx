@@ -121,8 +121,8 @@ export default function Home() {
       {!hideInit && (
         <div
           className={`absolute inset-0 transition-all duration-1000 ease-in-out ${isTransitioning
-              ? "opacity-0 blur-xl scale-105"
-              : "opacity-100 blur-0 scale-100"
+            ? "opacity-0 blur-xl scale-105"
+            : "opacity-100 blur-0 scale-100"
             }`}
           style={{ pointerEvents: isTransitioning ? "none" : "auto" }}
         >
@@ -133,8 +133,8 @@ export default function Home() {
       {showApp && (
         <div
           className={`absolute inset-0 transition-all duration-1000 ease-in-out ${showApp
-              ? "opacity-100 blur-0 scale-100"
-              : "opacity-0 blur-xl scale-95"
+            ? "opacity-100 blur-0 scale-100"
+            : "opacity-0 blur-xl scale-95"
             }`}
         >
           <AppPage initialQuery={initialQuery} />
