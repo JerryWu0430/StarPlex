@@ -37,6 +37,8 @@ type AudienceMapProps = {
   showCompetitors?: boolean;
   showDemographics?: boolean;
   showCofounders?: boolean;
+  /** Callback for when a heatmap point is clicked */
+  onHeatmapClick?: (feature: AudienceFeature | null) => void;
   /** Data from API calls */
   competitorsData?: any;
   vcsData?: any;
@@ -75,6 +77,7 @@ export default function AudienceMap({
   showCompetitors = false,
   showDemographics = false,
   showCofounders = false,
+  onHeatmapClick,
 }: AudienceMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
@@ -83,6 +86,100 @@ export default function AudienceMap({
   const competitorMarkersRef = useRef<Marker[]>([]);
   const cofounderMarkersRef = useRef<Marker[]>([]);
   const [styleUrl, setStyleUrl] = useState<string>(initialStyle);
+  const [heatmapData, setHeatmapData] = useState<AudienceCollection | null>(null);
+
+  /** Add heatmap layer for audience data */
+  const addHeatmapLayer = () => {
+    const map = mapRef.current;
+    if (!map || !heatmapData || !map.getSource("audience-heatmap")) return;
+
+    if (!map.getLayer("audience-heatmap-layer")) {
+      map.addLayer({
+        id: "audience-heatmap-layer",
+        type: "heatmap",
+        source: "audience-heatmap",
+        maxzoom: 15,
+        paint: {
+          "heatmap-weight": [
+            "interpolate",
+            ["linear"],
+            ["get", "weight"],
+            0,
+            0,
+            1,
+            1,
+          ],
+          "heatmap-intensity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            0,
+            1,
+            15,
+            3,
+          ],
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0,
+            "rgba(0, 0, 255, 0)",
+            0.1,
+            "rgb(0, 0, 255)",
+            0.3,
+            "rgb(0, 255, 0)",
+            0.5,
+            "rgb(255, 255, 0)",
+            0.7,
+            "rgb(255, 165, 0)",
+            1,
+            "rgb(255, 0, 0)",
+          ],
+          "heatmap-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            0,
+            20,
+            15,
+            60,
+          ],
+          "heatmap-opacity": 0.6,
+        },
+      });
+
+      // Add cursor pointer for clickable heatmap
+      if (onHeatmapClick) {
+        map.getCanvas().style.cursor = "pointer";
+      }
+
+
+      // Add click interactions for heatmap
+      if (onHeatmapClick) {
+        map.on("click", "audience-heatmap-layer", (e) => {
+          e.preventDefault();
+          e.originalEvent.stopPropagation();
+          if (e.features && e.features.length > 0) {
+            const feature = e.features[0] as unknown as AudienceFeature;
+            onHeatmapClick(feature);
+          }
+        });
+      }
+    }
+  };
+
+  /** Remove heatmap layer */
+  const removeHeatmapLayer = () => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (map.getLayer("audience-heatmap-layer")) {
+      map.removeLayer("audience-heatmap-layer");
+    }
+    if (map.getSource("audience-heatmap")) {
+      map.removeSource("audience-heatmap");
+    }
+  };
 
   /** Initialize the map ONCE */
   useEffect(() => {
@@ -104,7 +201,6 @@ export default function AudienceMap({
       bearing: 0,
       antialias: true,
       attributionControl: false,
-      navigationControl: false,
       logoPosition: 'bottom-left',
     });
     mapRef.current = map;
@@ -160,11 +256,16 @@ export default function AudienceMap({
       }
     };
 
+
     /** When a style is (re)loaded, keep globe + optional 3D buildings, and reattach markers */
     map.on("style.load", () => {
       ensureGlobeProjection();       // <- keep the globe look
       add3dBuildingsIfAvailable();   // <- only adds on styles that support it
       markersRef.current.forEach((m) => m.addTo(map));
+      // Re-add heatmap if demographics enabled and data exists
+      if (showDemographics && heatmapData) {
+        addHeatmapLayer();
+      }
     });
 
     /** First-time data load */
@@ -172,13 +273,18 @@ export default function AudienceMap({
       try {
         ensureGlobeProjection(); // make sure initial style starts as globe too
 
-        // Skip initial fetch - data will be passed via props
-        if (!demographicsData) {
-          console.log("No demographics data to display yet");
-          return;
+        // Use demographics data from props if available, otherwise fetch from endpoint
+        let data: AudienceCollection;
+        if (demographicsData) {
+          data = demographicsData;
+        } else {
+          const resp = await fetch("http://localhost:8000" + endpoint);
+          if (!resp.ok) throw new Error(`Fetch failed: ${resp.status} ${resp.statusText}`);
+          data = await resp.json();
         }
 
-        const data: AudienceCollection = demographicsData;
+        // Store data for heatmap
+        setHeatmapData(data);
 
         // Fit bounds / center
         const coords = data.features.map((f) => f.geometry.coordinates);
@@ -195,28 +301,45 @@ export default function AudienceMap({
         markersRef.current.forEach((m) => m.remove());
         markersRef.current = [];
 
-        // Add markers + popups
-        data.features.forEach((feature: AudienceFeature) => {
-          const { coordinates } = feature.geometry;
-          const props = feature.properties ?? {};
+        // Add markers + popups (only if demographics is not enabled - we show heatmap instead)
+        if (!showDemographics) {
+          data.features.forEach((feature: AudienceFeature) => {
+            const { coordinates } = feature.geometry;
+            const props = feature.properties ?? {};
 
-          const popupHtml = `
-            <div style="min-width:200px">
-              <h3 style="margin:0 0 6px 0">${props.name ?? ""}</h3>
-              ${props.description ? `<p>${props.description}</p>` : ""}
-              ${props.target_fit ? `<p><strong>Target fit:</strong> ${props.target_fit}</p>` : ""}
-              ${props.display_name ? `<p style="font-size:0.8em;color:#555">${props.display_name}</p>` : ""}
-            </div>`;
+            const popupHtml = `
+              <div style="min-width:200px">
+                <h3 style="margin:0 0 6px 0">${props.name ?? ""}</h3>
+                ${props.description ? `<p>${props.description}</p>` : ""}
+                ${props.target_fit ? `<p><strong>Target fit:</strong> ${props.target_fit}</p>` : ""}
+                ${props.display_name ? `<p style="font-size:0.8em;color:#555">${props.display_name}</p>` : ""}
+              </div>`;
 
-          const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
+            const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
 
-          const marker = new mapboxgl.Marker({ draggable: false })
-            .setLngLat(coordinates as [number, number])
-            .setPopup(popup)
-            .addTo(map);
+            const marker = new mapboxgl.Marker({ draggable: false })
+              .setLngLat(coordinates as [number, number])
+              .setPopup(popup)
+              .addTo(map);
 
-          markersRef.current.push(marker);
-        });
+            markersRef.current.push(marker);
+          });
+        }
+
+        // Add heatmap if demographics enabled
+        if (showDemographics) {
+          // Remove existing heatmap first
+          removeHeatmapLayer();
+
+          // Add heatmap source
+          map.addSource("audience-heatmap", {
+            type: "geojson",
+            data: data,
+          });
+
+          // Add heatmap layer
+          addHeatmapLayer();
+        }
       } catch (err) {
         console.error("Error fetching audience map:", err);
       }
@@ -232,6 +355,7 @@ export default function AudienceMap({
       competitorMarkersRef.current = [];
       cofounderMarkersRef.current.forEach((m) => m.remove());
       cofounderMarkersRef.current = [];
+      removeHeatmapLayer();
       map.remove();
       mapRef.current = null;
     };
@@ -256,14 +380,14 @@ export default function AudienceMap({
 
     try {
 
-        // Add VC markers to the map
-        data.vcs.forEach((vc: any) => {
-          const { coordinates, name, firm, location, links, match_score } = vc;
+      // Add VC markers to the map
+      data.vcs.forEach((vc: any) => {
+        const { coordinates, name, firm, location, links, match_score } = vc;
 
-          if (!coordinates?.latitude || !coordinates?.longitude) return;
+        if (!coordinates?.latitude || !coordinates?.longitude) return;
 
-          // Create popup HTML with VC information
-          const popupHtml = `
+        // Create popup HTML with VC information
+        const popupHtml = `
             <div style="min-width:250px; max-width:300px;">
               <h3 style="margin:0 0 8px 0; font-size: 17px; font-weight: 700; color: #10b981;">${name || 'N/A'}</h3>
               <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Firm:</strong> ${firm || 'N/A'}</p>
@@ -275,9 +399,9 @@ export default function AudienceMap({
                   ${links.map((link: string) => `
                     <a href="${link}" target="_blank" rel="noopener noreferrer" 
                        style="display: block; margin: 2px 0; color: #0066cc; font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                      ${link.includes('linkedin') ? '💼 LinkedIn' : 
-                        link.includes('twitter') || link.includes('x.com') ? '🐦 Twitter' : 
-                        link.includes('crunchbase') ? '📊 Crunchbase' : '🔗 Link'}
+                      ${link.includes('linkedin') ? '💼 LinkedIn' :
+            link.includes('twitter') || link.includes('x.com') ? '🐦 Twitter' :
+              link.includes('crunchbase') ? '📊 Crunchbase' : '🔗 Link'}
                     </a>
                   `).join('')}
                 </div>
@@ -285,12 +409,12 @@ export default function AudienceMap({
             </div>
           `;
 
-          const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
+        const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
 
-          // Create a custom VC marker element (different color to distinguish from audience)
-          const el = document.createElement("div");
-          el.className = "vc-marker";
-          el.style.cssText = `
+        // Create a custom VC marker element (different color to distinguish from audience)
+        const el = document.createElement("div");
+        el.className = "vc-marker";
+        el.style.cssText = `
             background-color: #10b981;
             width: 30px;
             height: 30px;
@@ -303,15 +427,15 @@ export default function AudienceMap({
             justify-content: center;
             font-size: 16px;
           `;
-          el.innerHTML = "💰";
+        el.innerHTML = "💰";
 
-          const marker = new mapboxgl.Marker({ element: el, draggable: false })
-            .setLngLat([coordinates.longitude, coordinates.latitude])
-            .setPopup(popup)
-            .addTo(map);
+        const marker = new mapboxgl.Marker({ element: el, draggable: false })
+          .setLngLat([coordinates.longitude, coordinates.latitude])
+          .setPopup(popup)
+          .addTo(map);
 
-          vcMarkersRef.current.push(marker);
-        });
+        vcMarkersRef.current.push(marker);
+      });
     } catch (error) {
       console.error("Error displaying VCs:", error);
     }
@@ -333,14 +457,14 @@ export default function AudienceMap({
     console.log("Displaying competitors on map:", data);
 
     try {
-        // Add competitor markers to the map
-        data.competitors.forEach((competitor: any) => {
-          const { coordinates, company_name, location, links, date_founded, threat_score } = competitor;
+      // Add competitor markers to the map
+      data.competitors.forEach((competitor: any) => {
+        const { coordinates, company_name, location, links, date_founded, threat_score } = competitor;
 
-          if (!coordinates?.latitude || !coordinates?.longitude) return;
+        if (!coordinates?.latitude || !coordinates?.longitude) return;
 
-          // Create popup HTML with competitor information
-          const popupHtml = `
+        // Create popup HTML with competitor information
+        const popupHtml = `
             <div style="min-width:250px; max-width:300px;">
               <h3 style="margin:0 0 8px 0; font-size: 17px; font-weight: 700; color: #ef4444;">${company_name || 'N/A'}</h3>
               <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Location:</strong> ${location || 'N/A'}</p>
@@ -352,9 +476,9 @@ export default function AudienceMap({
                   ${links.map((link: string) => `
                     <a href="${link}" target="_blank" rel="noopener noreferrer" 
                        style="display: block; margin: 2px 0; color: #0066cc; font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                      ${link.includes('crunchbase') ? '📊 Crunchbase' : 
-                        link.includes('techcrunch') ? '📰 TechCrunch' : 
-                        link.includes('producthunt') ? '🚀 Product Hunt' : '🔗 Website'}
+                      ${link.includes('crunchbase') ? '📊 Crunchbase' :
+            link.includes('techcrunch') ? '📰 TechCrunch' :
+              link.includes('producthunt') ? '🚀 Product Hunt' : '🔗 Website'}
                     </a>
                   `).join('')}
                 </div>
@@ -362,12 +486,12 @@ export default function AudienceMap({
             </div>
           `;
 
-          const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
+        const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
 
-          // Create a custom competitor marker element (red color to distinguish)
-          const el = document.createElement("div");
-          el.className = "competitor-marker";
-          el.style.cssText = `
+        // Create a custom competitor marker element (red color to distinguish)
+        const el = document.createElement("div");
+        el.className = "competitor-marker";
+        el.style.cssText = `
             background-color: #ef4444;
             width: 30px;
             height: 30px;
@@ -380,15 +504,15 @@ export default function AudienceMap({
             justify-content: center;
             font-size: 16px;
           `;
-          el.innerHTML = "⚔️";
+        el.innerHTML = "⚔️";
 
-          const marker = new mapboxgl.Marker({ element: el, draggable: false })
-            .setLngLat([coordinates.longitude, coordinates.latitude])
-            .setPopup(popup)
-            .addTo(map);
+        const marker = new mapboxgl.Marker({ element: el, draggable: false })
+          .setLngLat([coordinates.longitude, coordinates.latitude])
+          .setPopup(popup)
+          .addTo(map);
 
-          competitorMarkersRef.current.push(marker);
-        });
+        competitorMarkersRef.current.push(marker);
+      });
     } catch (error) {
       console.error("Error displaying competitors:", error);
     }
@@ -411,14 +535,14 @@ export default function AudienceMap({
 
     try {
 
-        // Add cofounder markers to the map
-        data.cofounders.forEach((cofounder: any) => {
-          const { coordinates, name, location, links, match_score } = cofounder;
+      // Add cofounder markers to the map
+      data.cofounders.forEach((cofounder: any) => {
+        const { coordinates, name, location, links, match_score } = cofounder;
 
-          if (!coordinates?.latitude || !coordinates?.longitude) return;
+        if (!coordinates?.latitude || !coordinates?.longitude) return;
 
-          // Create popup HTML with cofounder information
-          const popupHtml = `
+        // Create popup HTML with cofounder information
+        const popupHtml = `
             <div style="min-width:250px; max-width:300px;">
               <h3 style="margin:0 0 8px 0; font-size: 17px; font-weight: 700; color: #8b5cf6;">${name || 'N/A'}</h3>
               <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Location:</strong> ${location || 'N/A'}</p>
@@ -429,10 +553,10 @@ export default function AudienceMap({
                   ${links.map((link: string) => `
                     <a href="${link}" target="_blank" rel="noopener noreferrer" 
                        style="display: block; margin: 2px 0; color: #0066cc; font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                      ${link.includes('linkedin') ? '💼 LinkedIn' : 
-                        link.includes('twitter') || link.includes('x.com') ? '🐦 Twitter' : 
-                        link.includes('github') ? '💻 GitHub' : 
-                        link.includes('angellist') ? '👼 AngelList' : '🔗 Link'}
+                      ${link.includes('linkedin') ? '💼 LinkedIn' :
+            link.includes('twitter') || link.includes('x.com') ? '🐦 Twitter' :
+              link.includes('github') ? '💻 GitHub' :
+                link.includes('angellist') ? '👼 AngelList' : '🔗 Link'}
                     </a>
                   `).join('')}
                 </div>
@@ -440,12 +564,12 @@ export default function AudienceMap({
             </div>
           `;
 
-          const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
+        const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
 
-          // Create a custom cofounder marker element (purple color to distinguish)
-          const el = document.createElement("div");
-          el.className = "cofounder-marker";
-          el.style.cssText = `
+        // Create a custom cofounder marker element (purple color to distinguish)
+        const el = document.createElement("div");
+        el.className = "cofounder-marker";
+        el.style.cssText = `
             background-color: #8b5cf6;
             width: 30px;
             height: 30px;
@@ -458,19 +582,41 @@ export default function AudienceMap({
             justify-content: center;
             font-size: 16px;
           `;
-          el.innerHTML = "🤝";
+        el.innerHTML = "🤝";
 
-          const marker = new mapboxgl.Marker({ element: el, draggable: false })
-            .setLngLat([coordinates.longitude, coordinates.latitude])
-            .setPopup(popup)
-            .addTo(map);
+        const marker = new mapboxgl.Marker({ element: el, draggable: false })
+          .setLngLat([coordinates.longitude, coordinates.latitude])
+          .setPopup(popup)
+          .addTo(map);
 
-          cofounderMarkersRef.current.push(marker);
-        });
+        cofounderMarkersRef.current.push(marker);
+      });
     } catch (error) {
       console.error("Error displaying cofounders:", error);
     }
   }, [showCofounders, cofoundersData]);
+
+  /** Handle demographics toggle - show heatmap when demographics is enabled */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (showDemographics && heatmapData) {
+      // Remove existing heatmap first
+      removeHeatmapLayer();
+
+      // Add heatmap source
+      map.addSource("audience-heatmap", {
+        type: "geojson",
+        data: heatmapData,
+      });
+
+      // Add heatmap layer
+      addHeatmapLayer();
+    } else {
+      removeHeatmapLayer();
+    }
+  }, [showDemographics, heatmapData]);
 
   /** Toggle styles using setStyle (no re-init) and preserve globe */
   const handleToggleTheme = () => {
@@ -510,6 +656,7 @@ export default function AudienceMap({
           </button>
         </div>
       )}
+
       <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
     </div>
   );

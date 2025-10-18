@@ -11,10 +11,12 @@ import time
 from datetime import datetime
 from dotenv import load_dotenv
 from perplexity import AsyncPerplexity
-from geopy.geocoders import Nominatim
-from geopy.exc import GeocoderTimedOut, GeocoderServiceError
+import aiohttp
 
 load_dotenv()
+
+# Mapbox API token (get free one from mapbox.com)
+MAPBOX_TOKEN = os.getenv("MAPBOX_TOKEN", "")
 
 DEFAULT_DOMAIN = "AI for legal technology"
 
@@ -107,27 +109,41 @@ def extract_json_from_response(text: str):
     print(f"   ⚠️  No JSON array found in response")
     return []
 
-def geocode_location(location: str, geolocator) -> dict:
-    """Convert location to coordinates using Nominatim"""
-    try:
-        # Add a small delay to respect Nominatim's usage policy (max 1 request per second)
-        time.sleep(1.1)
-        
-        geo_result = geolocator.geocode(location, exactly_one=True, timeout=10)
-        
-        if geo_result:
-            return {
-                "latitude": geo_result.latitude,
-                "longitude": geo_result.longitude
-            }
-        else:
-            return {"latitude": None, "longitude": None}
-    
-    except (GeocoderTimedOut, GeocoderServiceError) as e:
-        print(f"   ⚠️  Geocoding error for '{location}': {e}")
+async def geocode_location(location: str, session: aiohttp.ClientSession) -> dict:
+    """Convert location to coordinates using Mapbox Geocoding API - FAST!"""
+    if not MAPBOX_TOKEN:
+        print(f"   ⚠️  No Mapbox token found, skipping geocoding for '{location}'")
         return {"latitude": None, "longitude": None}
+    
+    try:
+        # Mapbox Geocoding API endpoint
+        url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{location}.json"
+        params = {
+            "access_token": MAPBOX_TOKEN,
+            "limit": 1  # We only need the top result
+        }
+        
+        async with session.get(url, params=params) as response:
+            if response.status == 200:
+                data = await response.json()
+                
+                # Check if we got results
+                if data.get("features") and len(data["features"]) > 0:
+                    coords = data["features"][0]["geometry"]["coordinates"]
+                    # Mapbox returns [longitude, latitude], we need [latitude, longitude]
+                    return {
+                        "latitude": coords[1],
+                        "longitude": coords[0]
+                    }
+                else:
+                    print(f"   ⚠️  No results found for '{location}'")
+                    return {"latitude": None, "longitude": None}
+            else:
+                print(f"   ⚠️  Mapbox API error {response.status} for '{location}'")
+                return {"latitude": None, "longitude": None}
+    
     except Exception as e:
-        print(f"   ⚠️  Unexpected geocoding error: {e}")
+        print(f"   ⚠️  Geocoding error for '{location}': {e}")
         return {"latitude": None, "longitude": None}
 
 def calculate_match_score(founder: dict, domain: str) -> int:
@@ -292,15 +308,23 @@ async def main():
     print(f"🌍 GEOCODING LOCATIONS & CALCULATING MATCH SCORES")
     print(f"{'='*80}\n")
     
-    geolocator = Nominatim(user_agent="cofounder_finder_app")
-    
-    for i, founder in enumerate(all_founders, 1):
-        location = founder.get('location', '')
-        print(f"[{i}/{len(all_founders)}] Processing: {founder['name']} ({location})")
+    # Create aiohttp session for fast concurrent geocoding
+    async with aiohttp.ClientSession() as session:
+        # Geocode all locations concurrently - MUCH FASTER with Mapbox!
+        geocode_tasks = []
+        for i, founder in enumerate(all_founders, 1):
+            location = founder.get('location', '')
+            print(f"[{i}/{len(all_founders)}] Queuing: {founder['name']} ({location})")
+            task = geocode_location(location, session)
+            geocode_tasks.append(task)
         
-        # Add coordinates
-        coords = geocode_location(location, geolocator)
-        founder['coordinates'] = coords
+        # Execute all geocoding tasks concurrently (Mapbox allows 600 req/min!)
+        coords_results = await asyncio.gather(*geocode_tasks)
+        
+        # Assign coordinates to founders
+        for i, (founder, coords) in enumerate(zip(all_founders, coords_results), 1):
+            founder['coordinates'] = coords
+            print(f"   ✅ [{i}/{len(all_founders)}] {founder['name']}: {coords['latitude']}, {coords['longitude']}")
         
         # Use AI's match score if provided, otherwise calculate our own
         if 'match_score' not in founder or founder.get('match_score') is None:
@@ -319,9 +343,12 @@ async def main():
                 match_score = calculate_match_score(founder, domain)
                 founder['match_score'] = match_score
                 score_source = "(calculated)"
-        
-        print(f"   📍 Coords: {coords['latitude']}, {coords['longitude']}")
-        print(f"   ⭐ Match Score: {match_score}/10 {score_source}\n")
+    
+    # Print match scores after geocoding
+    print(f"\n⭐ CALCULATING MATCH SCORES\n")
+    for i, founder in enumerate(all_founders, 1):
+        match_score = founder.get('match_score', 0)
+        print(f"   [{i}/{len(all_founders)}] {founder['name']}: {match_score}/10")
     
     # Sort by match score (highest first)
     all_founders.sort(key=lambda x: x.get('match_score', 0), reverse=True)
@@ -429,12 +456,14 @@ async def find_cofounders_api(domain: str, max_results: int = 20, include_coordi
     
     # Add geocoding and match scores if requested
     if include_coordinates and all_founders:
-        geolocator = Nominatim(user_agent="cofounder_finder_api")
-        
-        for founder in all_founders:
-            location = founder.get('location', '')
-            coords = geocode_location(location, geolocator)
-            founder['coordinates'] = coords
+        async with aiohttp.ClientSession() as session:
+            # Geocode all locations concurrently - FAST with Mapbox!
+            geocode_tasks = [geocode_location(f.get('location', ''), session) for f in all_founders]
+            coords_results = await asyncio.gather(*geocode_tasks)
+            
+            # Assign coordinates to founders
+            for founder, coords in zip(all_founders, coords_results):
+                founder['coordinates'] = coords
             
             # Use AI's match score if provided, otherwise calculate
             if 'match_score' not in founder or founder.get('match_score') is None:

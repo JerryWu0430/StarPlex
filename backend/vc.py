@@ -7,14 +7,15 @@ import os
 import json
 import re
 import asyncio
-import time
 from datetime import datetime
 from dotenv import load_dotenv
 from perplexity import AsyncPerplexity
-from geopy.geocoders import Nominatim
-from geopy.exc import GeocoderTimedOut, GeocoderServiceError
+import aiohttp
 
 load_dotenv()
+
+# Mapbox API token
+MAPBOX_TOKEN = os.getenv("MAPBOX_TOKEN", "")
 
 DEFAULT_DOMAIN = "AI for legal technology"
 
@@ -110,27 +111,40 @@ def extract_json_from_response(text: str):
     print(f"   ⚠️  No JSON array found in response")
     return []
 
-def geocode_location(location: str, geolocator) -> dict:
-    """Convert location to coordinates using Nominatim"""
-    try:
-        # Add a small delay to respect Nominatim's usage policy (max 1 request per second)
-        time.sleep(1.1)
-        
-        geo_result = geolocator.geocode(location, exactly_one=True, timeout=10)
-        
-        if geo_result:
-            return {
-                "latitude": geo_result.latitude,
-                "longitude": geo_result.longitude
-            }
-        else:
-            return {"latitude": None, "longitude": None}
-    
-    except (GeocoderTimedOut, GeocoderServiceError) as e:
-        print(f"   ⚠️  Geocoding error for '{location}': {e}")
+async def geocode_location(location: str, session: aiohttp.ClientSession) -> dict:
+    """Convert location to coordinates using Mapbox Geocoding API - FAST!"""
+    if not MAPBOX_TOKEN:
+        print(f"   ⚠️  No Mapbox token found, skipping geocoding for '{location}'")
         return {"latitude": None, "longitude": None}
+    
+    try:
+        # Mapbox Geocoding API endpoint
+        url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{location}.json"
+        params = {
+            "access_token": MAPBOX_TOKEN,
+            "limit": 1
+        }
+        
+        async with session.get(url, params=params) as response:
+            if response.status == 200:
+                data = await response.json()
+                
+                if data.get("features") and len(data["features"]) > 0:
+                    coords = data["features"][0]["geometry"]["coordinates"]
+                    # Mapbox returns [longitude, latitude]
+                    return {
+                        "latitude": coords[1],
+                        "longitude": coords[0]
+                    }
+                else:
+                    print(f"   ⚠️  No results found for '{location}'")
+                    return {"latitude": None, "longitude": None}
+            else:
+                print(f"   ⚠️  Mapbox API error {response.status} for '{location}'")
+                return {"latitude": None, "longitude": None}
+    
     except Exception as e:
-        print(f"   ⚠️  Unexpected geocoding error: {e}")
+        print(f"   ⚠️  Geocoding error for '{location}': {e}")
         return {"latitude": None, "longitude": None}
 
 def calculate_match_score(vc: dict, domain: str) -> int:
@@ -295,15 +309,23 @@ async def main():
     print(f"🌍 GEOCODING LOCATIONS & CALCULATING MATCH SCORES")
     print(f"{'='*80}\n")
     
-    geolocator = Nominatim(user_agent="vc_finder_app")
-    
-    for i, vc in enumerate(all_vcs, 1):
-        location = vc.get('location', '')
-        print(f"[{i}/{len(all_vcs)}] Processing: {vc['name']} @ {vc['firm']} ({location})")
+    # Create aiohttp session for fast concurrent geocoding
+    async with aiohttp.ClientSession() as session:
+        # Geocode all locations concurrently - MUCH FASTER with Mapbox!
+        geocode_tasks = []
+        for i, vc in enumerate(all_vcs, 1):
+            location = vc.get('location', '')
+            print(f"[{i}/{len(all_vcs)}] Queuing: {vc['name']} @ {vc['firm']} ({location})")
+            task = geocode_location(location, session)
+            geocode_tasks.append(task)
         
-        # Add coordinates
-        coords = geocode_location(location, geolocator)
-        vc['coordinates'] = coords
+        # Execute all geocoding tasks concurrently
+        coords_results = await asyncio.gather(*geocode_tasks)
+        
+        # Assign coordinates to VCs
+        for i, (vc, coords) in enumerate(zip(all_vcs, coords_results), 1):
+            vc['coordinates'] = coords
+            print(f"   ✅ [{i}/{len(all_vcs)}] {vc['name']}: {coords['latitude']}, {coords['longitude']}")
         
         # Use AI's match score if provided, otherwise calculate our own
         if 'match_score' not in vc or vc.get('match_score') is None:
@@ -322,9 +344,12 @@ async def main():
                 match_score = calculate_match_score(vc, domain)
                 vc['match_score'] = match_score
                 score_source = "(calculated)"
-        
-        print(f"   📍 Coords: {coords['latitude']}, {coords['longitude']}")
-        print(f"   ⭐ Match Score: {match_score}/10 {score_source}\n")
+    
+    # Print match scores after geocoding
+    print(f"\n⭐ CALCULATING MATCH SCORES\n")
+    for i, vc in enumerate(all_vcs, 1):
+        match_score = vc.get('match_score', 0)
+        print(f"   [{i}/{len(all_vcs)}] {vc['name']}: {match_score}/10")
     
     # Sort by match score (highest first)
     all_vcs.sort(key=lambda x: x.get('match_score', 0), reverse=True)
@@ -429,12 +454,14 @@ async def find_vcs_api(domain: str, stage: str = "seed", max_results: int = 20, 
     
     # Add geocoding and match scores if requested
     if include_coordinates and all_vcs:
-        geolocator = Nominatim(user_agent="vc_finder_api")
-        
-        for vc in all_vcs:
-            location = vc.get('location', '')
-            coords = geocode_location(location, geolocator)
-            vc['coordinates'] = coords
+        async with aiohttp.ClientSession() as session:
+            # Geocode all locations concurrently - FAST with Mapbox!
+            geocode_tasks = [geocode_location(v.get('location', ''), session) for v in all_vcs]
+            coords_results = await asyncio.gather(*geocode_tasks)
+            
+            # Assign coordinates to VCs
+            for vc, coords in zip(all_vcs, coords_results):
+                vc['coordinates'] = coords
             
             # Use AI's match score if provided, otherwise calculate
             if 'match_score' not in vc or vc.get('match_score') is None:

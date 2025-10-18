@@ -1,9 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AppPage from "./appPage";
+import AudienceMap from "@/components/AudienceMap";
+import DockAnimation from "@/components/DockAnimation";
 import InitPage from "./initPage";
 import { FieldSwitch } from "@/components/fieldSwitch";
+import { InputGroup, InputGroupButton, InputGroupAddon, InputGroupText, InputGroupTextarea } from "@/components/ui/input-group";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
+import { ArrowUpIcon, PlusIcon } from "lucide-react";
+import FloatingDetailSidebar from "@/components/FloatingDetailSidebar";
+import type { Feature, Point } from "geojson";
+
+type AudienceProps = {
+  name: string;
+  area_code?: string;
+  borough?: string;
+  country?: string;
+  description?: string;
+  target_fit?: string;
+  weight?: number;
+  display_name?: string;
+};
+
+type AudienceFeature = Feature<Point, AudienceProps>;
 
 export default function Home() {
   const [showApp, setShowApp] = useState(false);
@@ -12,8 +33,10 @@ export default function Home() {
   const [hideInit, setHideInit] = useState(false);
   const [showVCs, setShowVCs] = useState(false);
   const [showCompetitors, setShowCompetitors] = useState(false);
-  const [showDemographics, setShowDemographics] = useState(false);
+  const [showDemographics, setShowDemographics] = useState(true);
   const [showCofounders, setShowCofounders] = useState(false);
+  const [selectedFeature, setSelectedFeature] = useState<AudienceFeature | null>(null);
+  const [sidebarVisible, setSidebarVisible] = useState(false);
   const [isGeneratingPitchDeck, setIsGeneratingPitchDeck] = useState(false);
 
   const handleEnter = (value: string) => {
@@ -27,9 +50,35 @@ export default function Home() {
     }, 1400); // Hide after transition completes
   };
 
+  const handleHeatmapClick = (feature: AudienceFeature | null) => {
+    if (feature) {
+      // Clicking on a POI - show sidebar
+      setSelectedFeature(feature);
+      setSidebarVisible(true);
+    } else {
+      // Clicking on empty area - hide sidebar
+      setSelectedFeature(null);
+      setSidebarVisible(false);
+    }
+  };
+
+  // Handle escape key to close sidebar
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && sidebarVisible) {
+        setSidebarVisible(false);
+        setSelectedFeature(null);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [sidebarVisible]);
   const handleGeneratePitchDeck = async () => {
     setIsGeneratingPitchDeck(true);
-    
+
     try {
       const response = await fetch("http://localhost:8000/generate-pitch-deck", {
         method: "POST",
@@ -47,11 +96,11 @@ export default function Home() {
 
       const data = await response.json();
       console.log("Pitch deck generated:", data);
-      
+
       // Download the PowerPoint file if available
       if (data.pptx_file) {
         const downloadUrl = `http://localhost:8000/download-pitch-deck/${data.pptx_file}`;
-        
+
         // Create a temporary anchor element to trigger download
         const link = document.createElement('a');
         link.href = downloadUrl;
@@ -71,11 +120,10 @@ export default function Home() {
     <div className="relative w-full h-screen overflow-hidden">
       {!hideInit && (
         <div
-          className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
-            isTransitioning 
-              ? "opacity-0 blur-xl scale-105" 
+          className={`absolute inset-0 transition-all duration-1000 ease-in-out ${isTransitioning
+              ? "opacity-0 blur-xl scale-105"
               : "opacity-100 blur-0 scale-100"
-          }`}
+            }`}
           style={{ pointerEvents: isTransitioning ? "none" : "auto" }}
         >
           <InitPage onEnter={handleEnter} />
@@ -84,37 +132,36 @@ export default function Home() {
 
       {showApp && (
         <div
-          className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
-            showApp 
-              ? "opacity-100 blur-0 scale-100" 
+          className={`absolute inset-0 transition-all duration-1000 ease-in-out ${showApp
+              ? "opacity-100 blur-0 scale-100"
               : "opacity-0 blur-xl scale-95"
-          }`}
+            }`}
         >
           <AppPage initialQuery={initialQuery} />
-          
+
           {/* Pitch deck controls overlay */}
           <div className="absolute top-4 right-4 z-10 grid grid-cols-1 gap-2">
-            <FieldSwitch 
-              title="Market Competitors" 
-              description="Who's copying your genius idea?" 
+            <FieldSwitch
+              title="Market Competitors"
+              description="Who's copying your genius idea?"
               checked={showCompetitors}
               onCheckedChange={setShowCompetitors}
             />
-            <FieldSwitch 
-              title="Customer Demographics" 
-              description="Where's the market?" 
+            <FieldSwitch
+              title="Customer Demographics"
+              description="Where's the market?"
               checked={showDemographics}
               onCheckedChange={setShowDemographics}
             />
-            <FieldSwitch 
-              title="VC Victims" 
-              description="Who is willing to throw you money?" 
+            <FieldSwitch
+              title="VC Victims"
+              description="Who is willing to throw you money?"
               checked={showVCs}
               onCheckedChange={setShowVCs}
             />
-            <FieldSwitch 
-              title="Co-ballers" 
-              description="Who's willing to scale a B2B AI SaaS startup?" 
+            <FieldSwitch
+              title="Co-ballers"
+              description="Who's willing to scale a B2B AI SaaS startup?"
               checked={showCofounders}
               onCheckedChange={setShowCofounders}
             />
@@ -130,8 +177,8 @@ export default function Home() {
                       {isGeneratingPitchDeck ? "Generating Pitch Deck..." : "Generate Pitch Deck"}
                     </div>
                     <div className="text-xs text-muted-foreground leading-normal font-normal">
-                      {isGeneratingPitchDeck 
-                        ? "AI is creating your presentation..." 
+                      {isGeneratingPitchDeck
+                        ? "AI is creating your presentation..."
                         : "Create investor-ready slides with AI"}
                     </div>
                   </div>
