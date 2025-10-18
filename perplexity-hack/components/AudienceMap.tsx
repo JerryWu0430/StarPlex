@@ -37,6 +37,11 @@ type AudienceMapProps = {
   showCompetitors?: boolean;
   showDemographics?: boolean;
   showCofounders?: boolean;
+  /** Data from API calls */
+  competitorsData?: any;
+  vcsData?: any;
+  cofoundersData?: any;
+  demographicsData?: any;
 };
 
 /** ---------- Styles ---------- */
@@ -58,6 +63,10 @@ const envToken =
 export default function AudienceMap({
   endpoint = "/audience-map",
   token,
+  competitorsData,
+  vcsData,
+  cofoundersData,
+  demographicsData,
   initialStyle = DEFAULT_STYLE,
   enableThemeToggle = false,
   style,
@@ -95,6 +104,8 @@ export default function AudienceMap({
       bearing: 0,
       antialias: true,
       attributionControl: false,
+      navigationControl: false,
+      logoPosition: 'bottom-left',
     });
     mapRef.current = map;
 
@@ -161,9 +172,13 @@ export default function AudienceMap({
       try {
         ensureGlobeProjection(); // make sure initial style starts as globe too
 
-        const resp = await fetch(endpoint);
-        if (!resp.ok) throw new Error(`Fetch failed: ${resp.status} ${resp.statusText}`);
-        const data: AudienceCollection = await resp.json();
+        // Skip initial fetch - data will be passed via props
+        if (!demographicsData) {
+          console.log("No demographics data to display yet");
+          return;
+        }
+
+        const data: AudienceCollection = demographicsData;
 
         // Fit bounds / center
         const coords = data.features.map((f) => f.geometry.coordinates);
@@ -224,7 +239,7 @@ export default function AudienceMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** Handle VC toggle - fetch and display VCs as pins */
+  /** Handle VC toggle - display VCs as pins */
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -233,29 +248,13 @@ export default function AudienceMap({
     vcMarkersRef.current.forEach((m) => m.remove());
     vcMarkersRef.current = [];
 
-    if (!showVCs) return;
+    if (!showVCs || !vcsData) return;
 
-    // Fetch VCs from backend
-    const fetchVCs = async () => {
-      try {
-        const response = await fetch("http://localhost:8000/find-vcs", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            idea: "AI for legal technology",
-            max_results: 20,
-            include_coordinates: true,
-          }),
-        });
+    // Use data from props
+    const data = vcsData;
+    console.log("Displaying VCs on map:", data);
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch VCs: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("VCs fetched:", data);
+    try {
 
         // Add VC markers to the map
         data.vcs.forEach((vc: any) => {
@@ -313,15 +312,12 @@ export default function AudienceMap({
 
           vcMarkersRef.current.push(marker);
         });
-      } catch (error) {
-        console.error("Error fetching VCs:", error);
-      }
-    };
+    } catch (error) {
+      console.error("Error displaying VCs:", error);
+    }
+  }, [showVCs, vcsData]);
 
-    fetchVCs();
-  }, [showVCs]);
-
-  /** Handle Competitor toggle - fetch and display competitors as pins */
+  /** Handle Competitor toggle - display competitors as pins */
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -330,30 +326,13 @@ export default function AudienceMap({
     competitorMarkersRef.current.forEach((m) => m.remove());
     competitorMarkersRef.current = [];
 
-    if (!showCompetitors) return;
+    if (!showCompetitors || !competitorsData) return;
 
-    // Fetch competitors from backend
-    const fetchCompetitors = async () => {
-      try {
-        const response = await fetch("http://localhost:8000/find-competitors", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            idea: "AI for legal technology",
-            max_results: 20,
-            include_coordinates: true,
-          }),
-        });
+    // Use data from props
+    const data = competitorsData;
+    console.log("Displaying competitors on map:", data);
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch competitors: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("Competitors fetched:", data);
-
+    try {
         // Add competitor markers to the map
         data.competitors.forEach((competitor: any) => {
           const { coordinates, company_name, location, links, date_founded, threat_score } = competitor;
@@ -410,15 +389,12 @@ export default function AudienceMap({
 
           competitorMarkersRef.current.push(marker);
         });
-      } catch (error) {
-        console.error("Error fetching competitors:", error);
-      }
-    };
+    } catch (error) {
+      console.error("Error displaying competitors:", error);
+    }
+  }, [showCompetitors, competitorsData]);
 
-    fetchCompetitors();
-  }, [showCompetitors]);
-
-  /** Handle Cofounder toggle - fetch and display cofounders as pins */
+  /** Handle Cofounder toggle - display cofounders as pins */
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -427,29 +403,13 @@ export default function AudienceMap({
     cofounderMarkersRef.current.forEach((m) => m.remove());
     cofounderMarkersRef.current = [];
 
-    if (!showCofounders) return;
+    if (!showCofounders || !cofoundersData) return;
 
-    // Fetch cofounders from backend
-    const fetchCofounders = async () => {
-      try {
-        const response = await fetch("http://localhost:8000/find-cofounders", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            idea: "AI for legal technology",
-            max_results: 20,
-            include_coordinates: true,
-          }),
-        });
+    // Use data from props
+    const data = cofoundersData;
+    console.log("Displaying cofounders on map:", data);
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch cofounders: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("Cofounders fetched:", data);
+    try {
 
         // Add cofounder markers to the map
         data.cofounders.forEach((cofounder: any) => {
@@ -507,13 +467,10 @@ export default function AudienceMap({
 
           cofounderMarkersRef.current.push(marker);
         });
-      } catch (error) {
-        console.error("Error fetching cofounders:", error);
-      }
-    };
-
-    fetchCofounders();
-  }, [showCofounders]);
+    } catch (error) {
+      console.error("Error displaying cofounders:", error);
+    }
+  }, [showCofounders, cofoundersData]);
 
   /** Toggle styles using setStyle (no re-init) and preserve globe */
   const handleToggleTheme = () => {
