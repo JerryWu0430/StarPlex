@@ -151,12 +151,32 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
 
     const fetchDataSequentially = async () => {
       // Clear old cached data when starting new fetch
+      setDemographicsData(null);
       setCompetitorsData(null);
-      setVCsData(null);
       setCofoundersData(null);
       setDemographicsData(null);
 
-      // 1. Fetch competitors
+      // 1. Fetch demographics
+      setCurrentLoading("demographics");
+      try {
+        console.log("Fetching demographics for:", startupIdea);
+        const demographicsResult = await getAudienceMap(startupIdea);
+        console.log("Demographics result:", demographicsResult);
+        setDemographicsData(demographicsResult);
+        setAlert({ type: "success", message: "Customer demographics loaded" });
+        setTimeout(() => setAlert(null), 3000);
+      } catch (err: any) {
+        console.error("Error fetching demographics:", err);
+        const errorMsg = err?.message?.includes("429") ? "Rate limit - waiting..." : "Failed to fetch demographics";
+        setAlert({ type: "error", message: errorMsg });
+        setTimeout(() => setAlert(null), 3000);
+      }
+      setCurrentLoading(null);
+
+      // Wait 3 seconds before next API call to avoid rate limits
+      await sleep(3000);
+
+      // 2. Fetch competitors
       setCurrentLoading("competitors");
       try {
         console.log("Fetching competitors for:", currentStartupIdea);
@@ -167,25 +187,6 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
       } catch (err: any) {
         console.error("Error fetching competitors:", err);
         const errorMsg = err?.message?.includes("429") ? "Rate limit - waiting..." : "Failed to fetch competitors";
-        setAlert({ type: "error", message: errorMsg });
-        setTimeout(() => setAlert(null), 3000);
-      }
-      setCurrentLoading(null);
-
-      // Wait 3 seconds before next API call to avoid rate limits
-      await sleep(3000);
-
-      // 2. Fetch VCs
-      setCurrentLoading("vcs");
-      try {
-        console.log("Fetching VCs for:", currentStartupIdea);
-        const vcsResult = await findVCs(currentStartupIdea);
-        setVCsData(vcsResult);
-        setAlert({ type: "success", message: `Found ${vcsResult.total_found} VCs` });
-        setTimeout(() => setAlert(null), 3000);
-      } catch (err: any) {
-        console.error("Error fetching VCs:", err);
-        const errorMsg = err?.message?.includes("429") ? "Rate limit - waiting..." : "Failed to fetch VCs";
         setAlert({ type: "error", message: errorMsg });
         setTimeout(() => setAlert(null), 3000);
       }
@@ -213,18 +214,17 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
       // Wait 3 seconds before next API call
       await sleep(3000);
 
-      // 4. Fetch demographics
-      setCurrentLoading("demographics");
+      // 4. Fetch VCs
+      setCurrentLoading("vcs");
       try {
-        console.log("Fetching demographics for:", currentStartupIdea);
-        const demographicsResult = await getAudienceMap(currentStartupIdea);
-        console.log("Demographics result:", demographicsResult);
-        setDemographicsData(demographicsResult);
-        setAlert({ type: "success", message: "Customer demographics loaded" });
+        console.log("Fetching VCs for:", currentStartupIdea);
+        const vcsResult = await findVCs(currentStartupIdea);
+        setVCsData(vcsResult);
+        setAlert({ type: "success", message: `Found ${vcsResult.total_found} VCs` });
         setTimeout(() => setAlert(null), 3000);
       } catch (err: any) {
-        console.error("Error fetching demographics:", err);
-        const errorMsg = err?.message?.includes("429") ? "Rate limit - waiting..." : "Failed to fetch demographics";
+        console.error("Error fetching VCs:", err);
+        const errorMsg = err?.message?.includes("429") ? "Rate limit - waiting..." : "Failed to fetch VCs";
         setAlert({ type: "error", message: errorMsg });
         setTimeout(() => setAlert(null), 3000);
       }
@@ -283,16 +283,16 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
 
       <div className="absolute top-4 right-4 z-10 grid grid-cols-1 gap-2">
         <FieldSwitch
+          title="Customer Demographics"
+          description="Where's the market?"
+          checked={showDemographics}
+          onCheckedChange={setShowDemographics}
+        />
+        <FieldSwitch
           title="Market Competitors"
           description="Who's copying your genius idea?"
           checked={showCompetitors}
           onCheckedChange={setShowCompetitors}
-        />
-        <FieldSwitch
-          title="VC Victims"
-          description="Who is willing to throw you money?"
-          checked={showVCs}
-          onCheckedChange={setShowVCs}
         />
         <FieldSwitch
           title="Co-ballers"
@@ -301,10 +301,10 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
           onCheckedChange={setShowCofounders}
         />
         <FieldSwitch
-          title="Customer Demographics"
-          description="Where's the market?"
-          checked={showDemographics}
-          onCheckedChange={setShowDemographics}
+          title="VC Victims"
+          description="Who is willing to throw you money?"
+          checked={showVCs}
+          onCheckedChange={setShowVCs}
         />
         {onGeneratePitchDeck && (
           <div className="w-full max-w-xs">
