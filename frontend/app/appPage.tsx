@@ -24,7 +24,7 @@ interface AppPageProps {
 
 export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratingPitchDeck = false }: AppPageProps) {
   const { startupIdea } = useStartup();
-  
+
   // all data is shown by default
   const [showVCs, setShowVCs] = useState(true);
   const [showCompetitors, setShowCompetitors] = useState(true);
@@ -237,13 +237,13 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
   const getLoadingMessage = () => {
     switch (currentLoading) {
       case "competitors":
-        return "Loading market competitors...";
+        return "Finding your competitors...";
       case "vcs":
         return "Loading VCs and investors...";
       case "cofounders":
         return "Loading potential cofounders...";
       case "demographics":
-        return "Loading customer demographics...";
+        return "Locating your target audience...";
       default:
         return null;
     }
