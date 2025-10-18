@@ -369,11 +369,10 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
                 className={`mb-3 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg p-3 ${
-                    msg.role === "user"
+                  className={`max-w-[80%] rounded-lg p-3 ${msg.role === "user"
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted"
-                  }`}
+                    }`}
                 >
                   {msg.role === "assistant" ? (
                     <MarkdownRenderer content={msg.content} />

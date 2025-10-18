@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import mapboxgl, { Map, Marker, LngLatBounds, FillExtrusionLayer } from "mapbox-gl";
 import type { FeatureCollection, Feature, Point } from "geojson";
 import "mapbox-gl/dist/mapbox-gl.css";
-import UnifiedPinSidebar from "./UnifiedPinSidebar";
+import UnifiedPinSidebar, { transformMarketAnalysisToStats } from "./UnifiedPinSidebar";
 
 /** ---------- Types ---------- */
 type AudienceProps = {
@@ -45,6 +45,7 @@ type AudienceMapProps = {
   vcsData?: any;
   cofoundersData?: any;
   demographicsData?: any;
+  marketAnalysisData?: any;
 };
 
 /** ---------- Styles ---------- */
@@ -70,6 +71,7 @@ export default function AudienceMap({
   vcsData,
   cofoundersData,
   demographicsData,
+  marketAnalysisData,
   initialStyle = DEFAULT_STYLE,
   enableThemeToggle = false,
   style,
@@ -102,6 +104,28 @@ export default function AudienceMap({
     setSidebarVisible(false);
     setSelectedPinData(null);
   }, []);
+
+  /** Offset coordinates to prevent overlapping markers with different patterns for each type */
+  const offsetDuplicateCoordinates = (lat: number, lng: number, markerType: 'vc' | 'competitor' | 'cofounder' = 'vc') => {
+    const BASE_OFFSET = 0.03; // Base offset in degrees (~33 meters)
+
+    // Different offset patterns for each marker type to ensure they don't overlap
+    const offsetPatterns = {
+      vc: { lat: 0, lng: 0 }, // VCs stay at original position
+      competitor: { lat: BASE_OFFSET, lng: BASE_OFFSET }, // Competitors offset northeast
+      cofounder: { lat: -BASE_OFFSET, lng: BASE_OFFSET }, // Cofounders offset northwest
+    };
+
+    const pattern = offsetPatterns[markerType];
+
+    // Add a small random variation to prevent exact overlaps within same type
+    const randomVariation = (Math.random() - 0.5) * (BASE_OFFSET * 0.3);
+
+    return [
+      lng + pattern.lng + randomVariation,
+      lat + pattern.lat + randomVariation
+    ];
+  };
 
   /** Load demographics data and update map */
   const loadDemographicsData = useCallback((data: AudienceCollection) => {
@@ -218,7 +242,8 @@ export default function AudienceMap({
               coordinates: {
                 latitude: feature.geometry.coordinates[1],
                 longitude: feature.geometry.coordinates[0]
-              }
+              },
+              marketStats: marketAnalysisData ? transformMarketAnalysisToStats(marketAnalysisData) : undefined
             };
             handlePinClick(heatmapPinData);
           }
@@ -307,7 +332,8 @@ export default function AudienceMap({
             coordinates: {
               latitude: feature.geometry.coordinates[1],
               longitude: feature.geometry.coordinates[0]
-            }
+            },
+            marketStats: marketAnalysisData ? transformMarketAnalysisToStats(marketAnalysisData) : undefined
           };
           handlePinClick(heatmapPinData);
         }
@@ -498,13 +524,19 @@ export default function AudienceMap({
           `;
         el.innerHTML = `
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="1" x2="12" y2="23"></line>
+            <line x1="12" x2="12" y1="2" y2="22"></line>
             <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
           </svg>
         `;
 
+        const [lng, lat] = offsetDuplicateCoordinates(
+          coordinates.latitude,
+          coordinates.longitude,
+          'vc'
+        );
+
         const marker = new mapboxgl.Marker({ element: el, draggable: false })
-          .setLngLat([coordinates.longitude, coordinates.latitude])
+          .setLngLat([lng, lat])
           .addTo(map);
 
         // Add click handler for sidebar
@@ -570,14 +602,25 @@ export default function AudienceMap({
           `;
         el.innerHTML = `
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-            <polyline points="3.29 7 12 12 20.71 7"></polyline>
-            <line x1="12" y1="22" x2="12" y2="12"></line>
+            <polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"></polyline>
+            <line x1="13" x2="19" y1="19" y2="13"></line>
+            <line x1="16" x2="20" y1="16" y2="20"></line>
+            <line x1="19" x2="21" y1="21" y2="19"></line>
+            <polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5"></polyline>
+            <line x1="5" x2="9" y1="14" y2="18"></line>
+            <line x1="7" x2="4" y1="17" y2="20"></line>
+            <line x1="3" x2="5" y1="19" y2="21"></line>
           </svg>
         `;
 
+        const [lng, lat] = offsetDuplicateCoordinates(
+          coordinates.latitude,
+          coordinates.longitude,
+          'competitor'
+        );
+
         const marker = new mapboxgl.Marker({ element: el, draggable: false })
-          .setLngLat([coordinates.longitude, coordinates.latitude])
+          .setLngLat([lng, lat])
           .addTo(map);
 
         // Add click handler for sidebar
@@ -650,8 +693,14 @@ export default function AudienceMap({
           </svg>
         `;
 
+        const [lng, lat] = offsetDuplicateCoordinates(
+          coordinates.latitude,
+          coordinates.longitude,
+          'cofounder'
+        );
+
         const marker = new mapboxgl.Marker({ element: el, draggable: false })
-          .setLngLat([coordinates.longitude, coordinates.latitude])
+          .setLngLat([lng, lat])
           .addTo(map);
 
         // Add click handler for sidebar
