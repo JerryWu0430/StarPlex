@@ -37,6 +37,8 @@ type AudienceMapProps = {
   showCompetitors?: boolean;
   showDemographics?: boolean;
   showCofounders?: boolean;
+  /** Callback for when a heatmap point is hovered */
+  onHeatmapHover?: (feature: AudienceFeature | null) => void;
 };
 
 /** ---------- Styles ---------- */
@@ -66,6 +68,7 @@ export default function AudienceMap({
   showCompetitors = false,
   showDemographics = false,
   showCofounders = false,
+  onHeatmapHover,
 }: AudienceMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
@@ -74,6 +77,96 @@ export default function AudienceMap({
   const competitorMarkersRef = useRef<Marker[]>([]);
   const cofounderMarkersRef = useRef<Marker[]>([]);
   const [styleUrl, setStyleUrl] = useState<string>(initialStyle);
+  const [heatmapData, setHeatmapData] = useState<AudienceCollection | null>(null);
+
+  /** Add heatmap layer for audience data */
+  const addHeatmapLayer = () => {
+    const map = mapRef.current;
+    if (!map || !heatmapData || !map.getSource("audience-heatmap")) return;
+
+    if (!map.getLayer("audience-heatmap-layer")) {
+      map.addLayer({
+        id: "audience-heatmap-layer",
+        type: "heatmap",
+        source: "audience-heatmap",
+        maxzoom: 15,
+        paint: {
+          "heatmap-weight": [
+            "interpolate",
+            ["linear"],
+            ["get", "weight"],
+            0,
+            0,
+            1,
+            1,
+          ],
+          "heatmap-intensity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            0,
+            1,
+            15,
+            3,
+          ],
+          "heatmap-color": [
+            "interpolate",
+            ["linear"],
+            ["heatmap-density"],
+            0,
+            "rgba(0, 0, 255, 0)",
+            0.1,
+            "rgb(0, 0, 255)",
+            0.3,
+            "rgb(0, 255, 0)",
+            0.5,
+            "rgb(255, 255, 0)",
+            0.7,
+            "rgb(255, 165, 0)",
+            1,
+            "rgb(255, 0, 0)",
+          ],
+          "heatmap-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            0,
+            20,
+            15,
+            60,
+          ],
+          "heatmap-opacity": 0.6,
+        },
+      });
+
+      // Add hover interactions for heatmap
+      if (onHeatmapHover) {
+        map.on("mousemove", "audience-heatmap-layer", (e) => {
+          if (e.features && e.features.length > 0) {
+            const feature = e.features[0] as unknown as AudienceFeature;
+            onHeatmapHover(feature);
+          }
+        });
+
+        map.on("mouseleave", "audience-heatmap-layer", () => {
+          onHeatmapHover(null);
+        });
+      }
+    }
+  };
+
+  /** Remove heatmap layer */
+  const removeHeatmapLayer = () => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (map.getLayer("audience-heatmap-layer")) {
+      map.removeLayer("audience-heatmap-layer");
+    }
+    if (map.getSource("audience-heatmap")) {
+      map.removeSource("audience-heatmap");
+    }
+  };
 
   /** Initialize the map ONCE */
   useEffect(() => {
@@ -149,11 +242,16 @@ export default function AudienceMap({
       }
     };
 
+
     /** When a style is (re)loaded, keep globe + optional 3D buildings, and reattach markers */
     map.on("style.load", () => {
       ensureGlobeProjection();       // <- keep the globe look
       add3dBuildingsIfAvailable();   // <- only adds on styles that support it
       markersRef.current.forEach((m) => m.addTo(map));
+      // Re-add heatmap if demographics enabled and data exists
+      if (showDemographics && heatmapData) {
+        addHeatmapLayer();
+      }
     });
 
     /** First-time data load */
@@ -161,9 +259,12 @@ export default function AudienceMap({
       try {
         ensureGlobeProjection(); // make sure initial style starts as globe too
 
-        const resp = await fetch(endpoint);
+        const resp = await fetch("http://localhost:8000" + endpoint);
         if (!resp.ok) throw new Error(`Fetch failed: ${resp.status} ${resp.statusText}`);
         const data: AudienceCollection = await resp.json();
+
+        // Store data for heatmap
+        setHeatmapData(data);
 
         // Fit bounds / center
         const coords = data.features.map((f) => f.geometry.coordinates);
@@ -180,28 +281,45 @@ export default function AudienceMap({
         markersRef.current.forEach((m) => m.remove());
         markersRef.current = [];
 
-        // Add markers + popups
-        data.features.forEach((feature: AudienceFeature) => {
-          const { coordinates } = feature.geometry;
-          const props = feature.properties ?? {};
+        // Add markers + popups (only if demographics is not enabled - we show heatmap instead)
+        if (!showDemographics) {
+          data.features.forEach((feature: AudienceFeature) => {
+            const { coordinates } = feature.geometry;
+            const props = feature.properties ?? {};
 
-          const popupHtml = `
-            <div style="min-width:200px">
-              <h3 style="margin:0 0 6px 0">${props.name ?? ""}</h3>
-              ${props.description ? `<p>${props.description}</p>` : ""}
-              ${props.target_fit ? `<p><strong>Target fit:</strong> ${props.target_fit}</p>` : ""}
-              ${props.display_name ? `<p style="font-size:0.8em;color:#555">${props.display_name}</p>` : ""}
-            </div>`;
+            const popupHtml = `
+              <div style="min-width:200px">
+                <h3 style="margin:0 0 6px 0">${props.name ?? ""}</h3>
+                ${props.description ? `<p>${props.description}</p>` : ""}
+                ${props.target_fit ? `<p><strong>Target fit:</strong> ${props.target_fit}</p>` : ""}
+                ${props.display_name ? `<p style="font-size:0.8em;color:#555">${props.display_name}</p>` : ""}
+              </div>`;
 
-          const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
+            const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
 
-          const marker = new mapboxgl.Marker({ draggable: false })
-            .setLngLat(coordinates as [number, number])
-            .setPopup(popup)
-            .addTo(map);
+            const marker = new mapboxgl.Marker({ draggable: false })
+              .setLngLat(coordinates as [number, number])
+              .setPopup(popup)
+              .addTo(map);
 
-          markersRef.current.push(marker);
-        });
+            markersRef.current.push(marker);
+          });
+        }
+
+        // Add heatmap if demographics enabled
+        if (showDemographics) {
+          // Remove existing heatmap first
+          removeHeatmapLayer();
+
+          // Add heatmap source
+          map.addSource("audience-heatmap", {
+            type: "geojson",
+            data: data,
+          });
+
+          // Add heatmap layer
+          addHeatmapLayer();
+        }
       } catch (err) {
         console.error("Error fetching audience map:", err);
       }
@@ -217,6 +335,7 @@ export default function AudienceMap({
       competitorMarkersRef.current = [];
       cofounderMarkersRef.current.forEach((m) => m.remove());
       cofounderMarkersRef.current = [];
+      removeHeatmapLayer();
       map.remove();
       mapRef.current = null;
     };
@@ -276,9 +395,9 @@ export default function AudienceMap({
                   ${links.map((link: string) => `
                     <a href="${link}" target="_blank" rel="noopener noreferrer" 
                        style="display: block; margin: 2px 0; color: #0066cc; font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                      ${link.includes('linkedin') ? '💼 LinkedIn' : 
-                        link.includes('twitter') || link.includes('x.com') ? '🐦 Twitter' : 
-                        link.includes('crunchbase') ? '📊 Crunchbase' : '🔗 Link'}
+                      ${link.includes('linkedin') ? '💼 LinkedIn' :
+              link.includes('twitter') || link.includes('x.com') ? '🐦 Twitter' :
+                link.includes('crunchbase') ? '📊 Crunchbase' : '🔗 Link'}
                     </a>
                   `).join('')}
                 </div>
@@ -373,9 +492,9 @@ export default function AudienceMap({
                   ${links.map((link: string) => `
                     <a href="${link}" target="_blank" rel="noopener noreferrer" 
                        style="display: block; margin: 2px 0; color: #0066cc; font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                      ${link.includes('crunchbase') ? '📊 Crunchbase' : 
-                        link.includes('techcrunch') ? '📰 TechCrunch' : 
-                        link.includes('producthunt') ? '🚀 Product Hunt' : '🔗 Website'}
+                      ${link.includes('crunchbase') ? '📊 Crunchbase' :
+              link.includes('techcrunch') ? '📰 TechCrunch' :
+                link.includes('producthunt') ? '🚀 Product Hunt' : '🔗 Website'}
                     </a>
                   `).join('')}
                 </div>
@@ -469,10 +588,10 @@ export default function AudienceMap({
                   ${links.map((link: string) => `
                     <a href="${link}" target="_blank" rel="noopener noreferrer" 
                        style="display: block; margin: 2px 0; color: #0066cc; font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                      ${link.includes('linkedin') ? '💼 LinkedIn' : 
-                        link.includes('twitter') || link.includes('x.com') ? '🐦 Twitter' : 
-                        link.includes('github') ? '💻 GitHub' : 
-                        link.includes('angellist') ? '👼 AngelList' : '🔗 Link'}
+                      ${link.includes('linkedin') ? '💼 LinkedIn' :
+              link.includes('twitter') || link.includes('x.com') ? '🐦 Twitter' :
+                link.includes('github') ? '💻 GitHub' :
+                  link.includes('angellist') ? '👼 AngelList' : '🔗 Link'}
                     </a>
                   `).join('')}
                 </div>
@@ -515,6 +634,28 @@ export default function AudienceMap({
     fetchCofounders();
   }, [showCofounders]);
 
+  /** Handle demographics toggle - show heatmap when demographics is enabled */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (showDemographics && heatmapData) {
+      // Remove existing heatmap first
+      removeHeatmapLayer();
+
+      // Add heatmap source
+      map.addSource("audience-heatmap", {
+        type: "geojson",
+        data: heatmapData,
+      });
+
+      // Add heatmap layer
+      addHeatmapLayer();
+    } else {
+      removeHeatmapLayer();
+    }
+  }, [showDemographics, heatmapData]);
+
   /** Toggle styles using setStyle (no re-init) and preserve globe */
   const handleToggleTheme = () => {
     const map = mapRef.current;
@@ -553,6 +694,7 @@ export default function AudienceMap({
           </button>
         </div>
       )}
+
       <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
     </div>
   );
