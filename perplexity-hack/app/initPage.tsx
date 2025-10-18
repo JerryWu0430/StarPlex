@@ -19,6 +19,14 @@ export default function InitPage({ onEnter }: { onEnter?: (value: string) => voi
         refresh={false}
       />
       
+      {/* STARPLEX Title */}
+      <div className={`absolute top-30 left-1/2 transform -translate-x-1/2 transition-all duration-300 ${isInputFocused ? 'blur-md' : ''}`}>
+        <h1 className="font-aeonik-trial text-6xl md:text-8xl font-normal tracking-wider">
+          <span className="text-white">STAR</span>
+          <span className="text-[#32B9C5]">PLEX</span>
+        </h1>
+      </div>
+      
       {/* Centered OrbInput - smaller */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="scale-100 opacity-100">
