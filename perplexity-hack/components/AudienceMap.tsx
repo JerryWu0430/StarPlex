@@ -41,7 +41,7 @@ const LIGHT_STYLE = "mapbox://styles/mapbox/standard";
 const DARK_STYLE = "mapbox://styles/mapbox/dark-v11";
 
 /** Default initial style */
-const DEFAULT_STYLE = LIGHT_STYLE;
+const DEFAULT_STYLE = DARK_STYLE;
 
 /** Dev token fallback — replace with your env if you prefer */
 const envToken =
@@ -54,7 +54,7 @@ export default function AudienceMap({
   endpoint = "/audience-map",
   token,
   initialStyle = DEFAULT_STYLE,
-  enableThemeToggle = true,
+  enableThemeToggle = false,
   style,
   className,
 }: AudienceMapProps) {
