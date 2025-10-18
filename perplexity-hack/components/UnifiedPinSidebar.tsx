@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { X, ExternalLink, MapPin, Building2, Users, TrendingUp, Calendar, Star, AlertTriangle, Link as LinkIcon } from "lucide-react";
+import { X, ExternalLink, MapPin, Building2, Users, TrendingUp, Calendar, Star, AlertTriangle, Link as LinkIcon, BarChart3, DollarSign, Brain, Target } from "lucide-react";
 
 // Types for different pin data
 interface VCPinData {
@@ -67,6 +67,12 @@ interface AudiencePinData {
   coordinates: {
     latitude: number;
     longitude: number;
+  };
+  marketStats?: {
+    marketCap: number;
+    aiProofScore: number;
+    trendData: Array<{ period: string; value: number }>;
+    industryKeywords: string[];
   };
 }
 
@@ -192,6 +198,146 @@ const ScoreDisplay: React.FC<{ score: number; maxScore?: number; label: string; 
           {score}/{maxScore}
         </span>
       </div>
+    </div>
+  );
+};
+
+// Utility function to transform API response to market stats format
+export const transformMarketAnalysisToStats = (marketAnalysis: any) => {
+  if (!marketAnalysis) return null;
+
+  const comprehensive = marketAnalysis.comprehensive_analysis || {};
+  const trendsData = marketAnalysis.google_trends_data?.trends_data || [];
+
+  // Transform trend data to the format expected by StatisticsSection
+  const trendData = trendsData.map((item: any) => ({
+    period: `${item.year}`,
+    value: Object.values(item).find(val => typeof val === 'number') as number || 0
+  })).slice(-10); // Get last 10 data points
+
+  return {
+    marketCap: comprehensive.market_cap_estimation || 0,
+    aiProofScore: comprehensive.how_AI_proof_it_is || 5,
+    trendData: trendData,
+    industryKeywords: marketAnalysis.industry_keywords_extracted || []
+  };
+};
+
+// Sample data for demonstration
+export const sampleMarketStats = {
+  marketCap: 2500000000, // $2.5B
+  aiProofScore: 7,
+  trendData: [
+    { period: "2020", value: 45 },
+    { period: "2021", value: 52 },
+    { period: "2022", value: 58 },
+    { period: "2023", value: 67 },
+    { period: "2024", value: 78 }
+  ],
+  industryKeywords: ["healthcare", "medical", "health", "pharma", "biotech"]
+};
+
+// Component for displaying market statistics
+const StatisticsSection: React.FC<{ marketStats: any }> = ({ marketStats }) => {
+  if (!marketStats) return null;
+
+  const formatMarketCap = (value: number) => {
+    if (value >= 1e9) return `$${(value / 1e9).toFixed(1)}B`;
+    if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
+    if (value >= 1e3) return `$${(value / 1e3).toFixed(1)}K`;
+    return `$${value.toFixed(0)}`;
+  };
+
+  const getAIProofColor = (score: number) => {
+    if (score >= 8) return 'text-green-400';
+    if (score >= 6) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
+  const getAIProofLabel = (score: number) => {
+    if (score >= 8) return 'AI Resilient';
+    if (score >= 6) return 'Moderate Risk';
+    return 'High AI Risk';
+  };
+
+  return (
+    <div className="space-y-4 pt-4 border-t border-gray-700/50">
+      <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+        <BarChart3 className="w-4 h-4" />
+        <span>Market Statistics</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {/* Market Cap */}
+        <div className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/30">
+          <div className="flex items-center gap-2 mb-2">
+            <DollarSign className="w-4 h-4 text-green-400" />
+            <span className="text-xs font-medium text-gray-300">Market Size</span>
+          </div>
+          <div className="text-lg font-bold text-green-400">
+            {formatMarketCap(marketStats.marketCap)}
+          </div>
+          <div className="text-xs text-gray-400">TAM</div>
+        </div>
+
+        {/* AI Proof Score */}
+        <div className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Brain className="w-4 h-4 text-blue-400" />
+            <span className="text-xs font-medium text-gray-300">AI Risk</span>
+          </div>
+          <div className={`text-lg font-bold ${getAIProofColor(marketStats.aiProofScore)}`}>
+            {marketStats.aiProofScore}/10
+          </div>
+          <div className="text-xs text-gray-400">{getAIProofLabel(marketStats.aiProofScore)}</div>
+        </div>
+      </div>
+
+      {/* Trend Chart */}
+      {marketStats.trendData && marketStats.trendData.length > 0 && (
+        <div className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/30">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="w-4 h-4 text-purple-400" />
+            <span className="text-xs font-medium text-gray-300">Market Trends</span>
+          </div>
+          <div className="space-y-2">
+            {marketStats.trendData.slice(-3).map((point: any, index: number) => (
+              <div key={index} className="flex items-center justify-between">
+                <span className="text-xs text-gray-400">{point.period}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-purple-400 transition-all duration-500"
+                      style={{ width: `${Math.min((point.value / 100) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-medium text-purple-400">{point.value}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Industry Keywords */}
+      {marketStats.industryKeywords && marketStats.industryKeywords.length > 0 && (
+        <div className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Target className="w-4 h-4 text-orange-400" />
+            <span className="text-xs font-medium text-gray-300">Industry Focus</span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {marketStats.industryKeywords.slice(0, 4).map((keyword: string, index: number) => (
+              <span
+                key={index}
+                className="px-2 py-1 text-xs bg-orange-500/20 text-orange-300 rounded-full border border-orange-500/30"
+              >
+                {keyword}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -407,6 +553,11 @@ const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
               {pinData.weight}
             </span>
           </div>
+
+          {/* Market Statistics */}
+          {pinData.marketStats && (
+            <StatisticsSection marketStats={pinData.marketStats} />
+          )}
         </div>
       );
 
