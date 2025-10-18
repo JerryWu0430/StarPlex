@@ -30,7 +30,13 @@ app = FastAPI(title="Startup Sonar API", version="1.0.0")
 # CORS for React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://localhost:4000",
+        "http://localhost:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -137,7 +143,7 @@ async def root():
             "/find-cofounders": "Find potential cofounders for your startup idea",
             "/find-vcs": "Find venture capitalists and investors for your startup",
             "/find-competitors": "Find competing companies in your market space",
-            "/comprehensive-market-analysis": "Comprehensive market analysis with search trends and detailed insights"
+            "/comprehensive-market-analysis": "Comprehensive market analysis with search trends and detailed insights",
             "/generate-pitch-deck": "Generate investor pitch deck for your startup idea"
         }
     }

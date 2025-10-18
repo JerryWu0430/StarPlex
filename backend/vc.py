@@ -48,10 +48,10 @@ IMPORTANT:
     return response.choices[0].message.content
 
 async def find_vcs_comprehensive(domain: str, stage: str = "seed"):
-    """Use multiple targeted queries to find relevant VCs"""
+    """Use multiple targeted queries to find relevant VCs - REDUCED TO 3 QUERIES TO AVOID RATE LIMITS"""
     
     queries = [
-        f"""Find 5 venture capital investors who invest in {domain} at {stage} stage. Return ONLY a JSON array with this exact format:
+        f"""Find 8 venture capital investors who invest in {domain} at {stage} stage. Return ONLY a JSON array with this exact format:
 [{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["linkedin_url", "firm_url", "twitter_url"], "match_score": 8}}]
 
 CRITICAL Requirements:
@@ -62,29 +62,13 @@ CRITICAL Requirements:
 - match_score: 1-10 rating of how good a match for {domain} at {stage} stage
 Only include verified real VCs with known city and country.""",
 
-        f"""Find 5 top-tier VCs who have invested in successful {domain} companies. Return ONLY JSON:
+        f"""Find 8 top-tier VCs who have invested in successful {domain} companies. Return ONLY JSON:
 [{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1", "url2"], "match_score": 9}}]
 Location MUST be "City, Country" format. Include match_score 1-10 for {domain}. Skip entries without both city and country.""",
 
-        f"""Search for {stage} stage investors actively seeking {domain} startups. Return ONLY JSON:
-[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 8}}]
-Must be real VCs with "City, Country" location. Include match_score 1-10. Omit if location is unknown.""",
-
         f"""Find venture capitalists from a16z, Sequoia, YC, Accel who invest in {domain}. Return ONLY JSON:
 [{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 9}}]
-Real VCs only. Include match_score 1-10 for {domain}. Location must include both city and country.""",
-
-        f"""Find angel investors and micro VCs in {domain} space. Return ONLY JSON:
-[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 7}}]
-Individual investors with "City, Country" location format. Include match_score 1-10.""",
-
-        f"""Search Crunchbase and PitchBook for {domain} investors at {stage} stage. Return ONLY JSON:
-[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 8}}]
-Real VCs with verified links. Include match_score 1-10 for {domain}. Location: "City, Country" format only.""",
-
-        f"""Find emerging and established VCs investing in {domain} sector. Return ONLY JSON:
-[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 7}}]
-Individual VCs with "City, Country" location. Include match_score 1-10 for {domain}. Skip if location incomplete."""
+Real VCs only. Include match_score 1-10 for {domain}. Location must include both city and country."""
     ]
     
     async with AsyncPerplexity() as client:
