@@ -7,9 +7,10 @@ import { InputGroup, InputGroupButton, InputGroupAddon, InputGroupText, InputGro
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { ArrowUpIcon, LoaderIcon, PlusIcon, CheckCircle2, XCircle } from "lucide-react";
-import { findCompetitors, findVCs, findCofounders, getAudienceMap, type CompetitorResponse, type VCResponse, type CofounderResponse } from "@/lib/api";
+import { findCompetitors, findVCs, findCofounders, getAudienceMap, sendChatMessage, type CompetitorResponse, type VCResponse, type CofounderResponse, type ChatMessage } from "@/lib/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Feature } from "geojson";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 type LoadingStatus = "competitors" | "vcs" | "cofounders" | "demographics" | null;
 type AlertType = { type: "success" | "error"; message: string } | null;
@@ -40,10 +41,72 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
   const [isSidebarVisible, setIsSidebarVisible] = useState(false);
   const [selectedHeatmapFeature, setSelectedHeatmapFeature] = useState<Feature | null>(null);
 
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatExpanded, setIsChatExpanded] = useState(false);
+  const [isSendingChat, setIsSendingChat] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+
   const startupIdea = initialQuery?.trim() || "";
 
   // Helper function to add delay between API calls
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  // Handle chat message send
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || isSendingChat || !startupIdea) return;
+
+    const userMessage: ChatMessage = {
+      role: "user",
+      content: chatInput.trim(),
+    };
+
+    setChatMessages((prev) => [...prev, userMessage]);
+    setChatInput("");
+    setIsChatExpanded(true);
+    setIsSendingChat(true);
+
+    try {
+      const response = await sendChatMessage(startupIdea, userMessage.content, {
+        vcs: vcsData?.vcs,
+        cofounders: cofoundersData?.cofounders,
+        competitors: competitorsData?.competitors,
+        demographics: demographicsData,
+      });
+
+      const assistantMessage: ChatMessage = {
+        role: "assistant",
+        content: response.response,
+      };
+      setChatMessages((prev) => [...prev, assistantMessage]);
+    } catch (error: any) {
+      console.error("Error sending chat message:", error);
+      const errorMessage: ChatMessage = {
+        role: "assistant",
+        content: "Sorry, I encountered an error processing your message. Please try again.",
+      };
+      setChatMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsSendingChat(false);
+    }
+  };
+
+  // Handle Enter key to send message
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  // Auto-expand chat when there are messages
+  useEffect(() => {
+    if (chatMessages.length > 0) {
+      setIsChatExpanded(true);
+    }
+  }, [chatMessages.length]);
+
 
   // Handle heatmap click to show sidebar with feature details
   const handleHeatmapClick = (feature: Feature | null) => {
@@ -292,8 +355,44 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
       </div>
 
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-full max-w-xl opacity-95">
+        {/* Chat messages - expand upward */}
+        {isChatExpanded && chatMessages.length > 0 && (
+          <div
+            ref={chatContainerRef}
+            className="mb-2 max-h-96 overflow-y-auto bg-card/95 backdrop-blur rounded-lg p-4 shadow-lg flex flex-col-reverse"
+          >
+            {/* Messages in reverse order so newest is at bottom */}
+            {[...chatMessages].reverse().map((msg, idx) => (
+              <div
+                key={chatMessages.length - 1 - idx}
+                className={`mb-3 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-lg p-3 ${
+                    msg.role === "user"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted"
+                  }`}
+                >
+                  {msg.role === "assistant" ? (
+                    <MarkdownRenderer content={msg.content} />
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <InputGroup>
-          <InputGroupTextarea placeholder="Ask, Search or Chat..." />
+          <InputGroupTextarea
+            placeholder="Ask, Search or Chat..."
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={isSendingChat}
+          />
           <InputGroupAddon align="block-end">
             <InputGroupButton
               variant="outline"
@@ -323,9 +422,14 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
               variant="default"
               className="rounded-full"
               size="icon-xs"
-              disabled
+              onClick={handleSendMessage}
+              disabled={isSendingChat || !chatInput.trim()}
             >
-              <ArrowUpIcon />
+              {isSendingChat ? (
+                <LoaderIcon className="animate-spin" />
+              ) : (
+                <ArrowUpIcon />
+              )}
               <span className="sr-only">Send</span>
             </InputGroupButton>
           </InputGroupAddon>
