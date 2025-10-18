@@ -335,7 +335,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
           </div>
         )}
       </div>
-      
+
 
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 w-full max-w-xl opacity-95">
         {/* Collapsed chat indicator */}
@@ -352,7 +352,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
             </button>
           </div>
         )}
-        
+
         {/* Chat messages - expand upward */}
         {isChatExpanded && chatMessages.length > 0 && (
           <div className="mb-2 animate-in slide-in-from-bottom-4 fade-in duration-300">
@@ -370,7 +370,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
                   <ChevronDown className="h-4 w-4" />
                 </button>
               </div>
-              
+
               {/* Messages container */}
               <div
                 ref={chatContainerRef}
@@ -383,11 +383,10 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
                     className={`mb-3 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`max-w-[80%] rounded-lg p-3 ${
-                        msg.role === "user"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted"
-                      }`}
+                      className={`max-w-[80%] rounded-lg p-3 ${msg.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted"
+                        }`}
                     >
                       {msg.role === "assistant" ? (
                         <MarkdownRenderer content={msg.content} />
