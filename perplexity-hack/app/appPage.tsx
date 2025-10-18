@@ -270,6 +270,25 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
             </button>
           </div>
         )}
+        <div className="w-full max-w-xs">
+          <button
+            className="w-full border p-3 shadow-sm bg-card opacity-90 rounded-lg transition-all duration-200 hover:opacity-100 hover:shadow-md"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-left flex-1">
+                <div className="text-sm font-medium leading-snug">
+                  Market Analysis
+                </div>
+                <div className="text-xs text-muted-foreground leading-normal font-normal">
+                  Deep dive into market trends & insights
+                </div>
+              </div>
+              <svg className="h-5 w-5 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+          </button>
+        </div>
       </div>
 
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-full max-w-xl opacity-95">
