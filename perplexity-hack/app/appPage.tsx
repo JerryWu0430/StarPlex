@@ -221,12 +221,6 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
           onCheckedChange={setShowCompetitors}
         />
         <FieldSwitch
-          title="Customer Demographics"
-          description="Where's the market?"
-          checked={showDemographics}
-          onCheckedChange={setShowDemographics}
-        />
-        <FieldSwitch
           title="VC Victims"
           description="Who is willing to throw you money?"
           checked={showVCs}
@@ -237,6 +231,12 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
           description="Who's willing to scale a B2B AI SaaS startup?"
           checked={showCofounders}
           onCheckedChange={setShowCofounders}
+        />
+        <FieldSwitch
+          title="Customer Demographics"
+          description="Where's the market?"
+          checked={showDemographics}
+          onCheckedChange={setShowDemographics}
         />
         {onGeneratePitchDeck && (
           <div className="w-full max-w-xs">

@@ -15,6 +15,11 @@ interface VCPinData {
     latitude: number;
     longitude: number;
   };
+  explanation?: {
+    recent_investments: string[];
+    investment_thesis: string[];
+    how_to_pitch: string[];
+  };
 }
 
 interface CompetitorPinData {
@@ -28,6 +33,11 @@ interface CompetitorPinData {
     latitude: number;
     longitude: number;
   };
+  explanation?: {
+    angle: string[];
+    what_they_cover: string[];
+    gaps: string[];
+  };
 }
 
 interface CofounderPinData {
@@ -39,6 +49,11 @@ interface CofounderPinData {
   coordinates: {
     latitude: number;
     longitude: number;
+  };
+  explanation?: {
+    why_good_match: string[];
+    expertise: string[];
+    unique_value: string[];
   };
 }
 
@@ -123,6 +138,31 @@ const LinkDisplay: React.FC<{ links: string[] }> = ({ links }) => {
   );
 };
 
+// Component for rendering explanation sections with icons and headers
+const ExplanationSection: React.FC<{
+  title: string;
+  items: string[];
+  icon: React.ReactNode;
+}> = ({ title, items, icon }) => {
+  if (!items || items.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+        {icon}
+        <span>{title}</span>
+      </div>
+      <ul className="space-y-1.5">
+        {items.map((item, idx) => (
+          <li key={idx} className="text-sm text-gray-400 pl-4 relative before:content-['•'] before:absolute before:left-0 before:text-blue-400">
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
 // Component for rendering score with visual indicator
 const ScoreDisplay: React.FC<{ score: number; maxScore?: number; label: string; type: 'positive' | 'negative' }> = ({
   score,
@@ -186,6 +226,27 @@ const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
             type="positive"
           />
 
+          {/* Explanation Sections */}
+          {pinData.explanation && (
+            <div className="space-y-4 pt-2 border-t border-gray-700/50">
+              <ExplanationSection
+                title="Recent Investments"
+                items={pinData.explanation.recent_investments}
+                icon={<TrendingUp className="w-4 h-4" />}
+              />
+              <ExplanationSection
+                title="Investment Thesis"
+                items={pinData.explanation.investment_thesis}
+                icon={<Star className="w-4 h-4" />}
+              />
+              <ExplanationSection
+                title="How to Pitch"
+                items={pinData.explanation.how_to_pitch}
+                icon={<Building2 className="w-4 h-4" />}
+              />
+            </div>
+          )}
+
           {/* Links */}
           <LinkDisplay links={pinData.links} />
         </div>
@@ -224,6 +285,27 @@ const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
             type="negative"
           />
 
+          {/* Explanation Sections */}
+          {pinData.explanation && (
+            <div className="space-y-4 pt-2 border-t border-gray-700/50">
+              <ExplanationSection
+                title="Their Angle"
+                items={pinData.explanation.angle}
+                icon={<TrendingUp className="w-4 h-4" />}
+              />
+              <ExplanationSection
+                title="What They Cover"
+                items={pinData.explanation.what_they_cover}
+                icon={<Building2 className="w-4 h-4" />}
+              />
+              <ExplanationSection
+                title="Gaps & Opportunities"
+                items={pinData.explanation.gaps}
+                icon={<AlertTriangle className="w-4 h-4" />}
+              />
+            </div>
+          )}
+
           {/* Links */}
           <LinkDisplay links={pinData.links} />
         </div>
@@ -255,6 +337,27 @@ const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
             label="Match Score"
             type="positive"
           />
+
+          {/* Explanation Sections */}
+          {pinData.explanation && (
+            <div className="space-y-4 pt-2 border-t border-gray-700/50">
+              <ExplanationSection
+                title="Why It's a Good Match"
+                items={pinData.explanation.why_good_match}
+                icon={<Star className="w-4 h-4" />}
+              />
+              <ExplanationSection
+                title="Their Expertise"
+                items={pinData.explanation.expertise}
+                icon={<Users className="w-4 h-4" />}
+              />
+              <ExplanationSection
+                title="Their Unique Value"
+                items={pinData.explanation.unique_value}
+                icon={<TrendingUp className="w-4 h-4" />}
+              />
+            </div>
+          )}
 
           {/* Links */}
           <LinkDisplay links={pinData.links} />
@@ -343,6 +446,24 @@ export default function UnifiedPinSidebar({
 }: UnifiedPinSidebarProps) {
   const [isPinned, setIsPinned] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
+
+  // Handle Escape key to close sidebar
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isVisible) {
+        onClose();
+        setIsPinned(false);
+      }
+    };
+
+    if (isVisible) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isVisible, onClose]);
 
   // Handle click to pin/unpin
   const handleClick = (e: React.MouseEvent) => {

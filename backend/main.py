@@ -56,12 +56,18 @@ class Coordinates(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 
+class FounderExplanation(BaseModel):
+    why_good_match: Optional[List[str]] = []
+    expertise: Optional[List[str]] = []
+    unique_value: Optional[List[str]] = []
+
 class Founder(BaseModel):
     name: str
     location: str
     links: List[str]
     coordinates: Optional[Coordinates] = None
     match_score: int
+    explanation: Optional[FounderExplanation] = None
 
 class CofounderResponse(BaseModel):
     success: bool
@@ -77,6 +83,11 @@ class VCRequest(BaseModel):
     max_results: Optional[int] = 20
     include_coordinates: Optional[bool] = True
 
+class VCExplanation(BaseModel):
+    recent_investments: Optional[List[str]] = []
+    investment_thesis: Optional[List[str]] = []
+    how_to_pitch: Optional[List[str]] = []
+
 class VC(BaseModel):
     name: str
     firm: str
@@ -84,6 +95,7 @@ class VC(BaseModel):
     links: List[str]
     coordinates: Optional[Coordinates] = None
     match_score: int
+    explanation: Optional[VCExplanation] = None
 
 class VCResponse(BaseModel):
     success: bool
@@ -100,6 +112,11 @@ class CompetitorRequest(BaseModel):
     max_results: Optional[int] = 20
     include_coordinates: Optional[bool] = True
 
+class CompetitorExplanation(BaseModel):
+    angle: Optional[List[str]] = []
+    what_they_cover: Optional[List[str]] = []
+    gaps: Optional[List[str]] = []
+
 class Competitor(BaseModel):
     company_name: str
     location: str
@@ -107,6 +124,7 @@ class Competitor(BaseModel):
     date_founded: str
     coordinates: Optional[Coordinates] = None
     threat_score: int
+    explanation: Optional[CompetitorExplanation] = None
 
 class CompetitorResponse(BaseModel):
     success: bool

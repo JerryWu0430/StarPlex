@@ -126,35 +126,6 @@ export default function AudienceMap({
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
 
-    // Add markers + popups (only if demographics is not enabled - we show heatmap instead)
-    if (!showDemographics) {
-      data.features.forEach((feature: AudienceFeature) => {
-        const { coordinates } = feature.geometry;
-        const props = feature.properties ?? {};
-
-        const popupHtml = `
-          <div style="min-width:200px">
-            <h3 style="margin:0 0 6px 0">${props.name ?? ""}</h3>
-            ${props.description ? `<p>${props.description}</p>` : ""}
-            ${props.target_fit ? `<p><strong>Target fit:</strong> ${props.target_fit}</p>` : ""}
-            ${props.display_name ? `<p style="font-size:0.8em;color:#555">${props.display_name}</p>` : ""}
-          </div>`;
-
-        const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
-
-        const marker = new mapboxgl.Marker({ draggable: false })
-          .setLngLat(coordinates as [number, number])
-          .setPopup(popup)
-          .addTo(map);
-
-        markersRef.current.push(marker);
-      });
-    } else {
-      // Clear any existing markers when demographics is enabled
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-    }
-
     // Add heatmap if demographics enabled
     if (showDemographics) {
       // Remove existing heatmap first
@@ -507,7 +478,8 @@ export default function AudienceMap({
           location,
           match_score,
           links,
-          coordinates
+          coordinates,
+          explanation: vc.explanation
         };
 
         // Create a custom VC marker element (different color to distinguish from audience)
@@ -575,7 +547,8 @@ export default function AudienceMap({
           date_founded,
           threat_score,
           links,
-          coordinates
+          coordinates,
+          explanation: competitor.explanation
         };
 
         // Create a custom competitor marker element (red color to distinguish)
@@ -643,7 +616,8 @@ export default function AudienceMap({
           location,
           match_score,
           links,
-          coordinates
+          coordinates,
+          explanation: cofounder.explanation
         };
 
         // Create a custom cofounder marker element (purple color to distinguish)
@@ -711,7 +685,10 @@ export default function AudienceMap({
       // Add heatmap layer
       addHeatmapLayer();
     } else {
+      // When demographics is disabled, remove heatmap and clear all markers
       removeHeatmapLayer();
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
     }
   }, [showDemographics, heatmapData, addHeatmapLayer, removeHeatmapLayer]);
 

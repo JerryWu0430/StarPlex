@@ -28,7 +28,7 @@ async def query_perplexity(client, prompt: str):
                 "role": "system",
                 "content": """You are a precise research assistant that returns structured data about venture capitalists and investors.
 CRITICAL: Return ONLY valid JSON. Do not include any explanatory text before or after the JSON.
-Format: [{"name": "First Last", "firm": "VC Firm Name", "location": "City, Country", "links": ["url1", "url2"], "match_score": 8}]
+Format: [{"name": "First Last", "firm": "VC Firm Name", "location": "City, Country", "links": ["url1", "url2"], "match_score": 8, "explanation": {"recent_investments": ["bullet1", "bullet2"], "investment_thesis": ["bullet1", "bullet2"], "how_to_pitch": ["bullet1", "bullet2"]}}]
 IMPORTANT: 
 - name: The individual partner/investor's name
 - firm: The venture capital firm they work at
@@ -37,6 +37,10 @@ IMPORTANT:
 - match_score: Rate 1-10 how good of a match this VC is for the domain
   * Consider: investment focus relevance, stage fit, check size, portfolio companies, accessibility
   * 1-3: Weak match, 4-6: Decent match, 7-8: Strong match, 9-10: Excellent match
+- explanation: Object with 3 sections, each containing 1-3 bullet points:
+  * recent_investments: Recent portfolio companies they've funded (1-2 examples)
+  * investment_thesis: Their investment focus and thesis
+  * how_to_pitch: How to angle your idea when pitching to them
 - Only include real individual VCs/partners with real names and firms."""
             },
             {
@@ -52,7 +56,7 @@ async def find_vcs_comprehensive(domain: str, stage: str = "seed"):
     
     queries = [
         f"""Find 8 venture capital investors who invest in {domain} at {stage} stage. Return ONLY a JSON array with this exact format:
-[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["linkedin_url", "firm_url", "twitter_url"], "match_score": 8}}]
+[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["linkedin_url", "firm_url", "twitter_url"], "match_score": 8, "explanation": {{"recent_investments": ["bullet1", "bullet2"], "investment_thesis": ["bullet1", "bullet2"], "how_to_pitch": ["bullet1", "bullet2"]}}}}]
 
 CRITICAL Requirements:
 - name: Real VC partner's first and last name
@@ -60,27 +64,28 @@ CRITICAL Requirements:
 - location: MUST be "City, Country" format (e.g., "San Francisco, USA"). Do NOT include if you don't know both city AND country.
 - links: At least 1 URL (LinkedIn, Twitter, firm website, Crunchbase, etc.)
 - match_score: 1-10 rating of how good a match for {domain} at {stage} stage
+- explanation: Object with recent_investments, investment_thesis, and how_to_pitch arrays (1-3 bullets each)
 Only include verified real VCs with known city and country.""",
 
         f"""Find 8 top-tier VCs who have invested in successful {domain} companies. Return ONLY JSON:
-[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1", "url2"], "match_score": 9}}]
-Location MUST be "City, Country" format. Include match_score 1-10 for {domain}. Skip entries without both city and country.""",
+[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1", "url2"], "match_score": 9, "explanation": {{"recent_investments": ["bullet1", "bullet2"], "investment_thesis": ["bullet1", "bullet2"], "how_to_pitch": ["bullet1", "bullet2"]}}}}]
+Location MUST be "City, Country" format. Include match_score 1-10 for {domain} and explanation object. Skip entries without both city and country.""",
 
         f"""Find venture capitalists from a16z, Sequoia, YC, Accel who invest in {domain}. Return ONLY JSON:
-[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 9}}]
-Real VCs only. Include match_score 1-10 for {domain}. Location must include both city and country.""",
+[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 9, "explanation": {{"recent_investments": ["bullet1", "bullet2"], "investment_thesis": ["bullet1", "bullet2"], "how_to_pitch": ["bullet1", "bullet2"]}}}}]
+Real VCs only. Include match_score 1-10 for {domain} and explanation object. Location must include both city and country.""",
 
         f"""Find angel investors and micro VCs in {domain} space. Return ONLY JSON:
-[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 7}}]
-Individual investors with "City, Country" location format. Include match_score 1-10.""",
+[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 7, "explanation": {{"recent_investments": ["bullet1", "bullet2"], "investment_thesis": ["bullet1", "bullet2"], "how_to_pitch": ["bullet1", "bullet2"]}}}}]
+Individual investors with "City, Country" location format. Include match_score 1-10 and explanation object.""",
 
         f"""Search Crunchbase and PitchBook for {domain} investors at {stage} stage. Return ONLY JSON:
-[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 8}}]
-Real VCs with verified links. Include match_score 1-10 for {domain}. Location: "City, Country" format only.""",
+[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 8, "explanation": {{"recent_investments": ["bullet1", "bullet2"], "investment_thesis": ["bullet1", "bullet2"], "how_to_pitch": ["bullet1", "bullet2"]}}}}]
+Real VCs with verified links. Include match_score 1-10 for {domain} and explanation object. Location: "City, Country" format only.""",
 
         f"""Find emerging and established VCs investing in {domain} sector. Return ONLY JSON:
-[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 7}}]
-Individual VCs with "City, Country" location. Include match_score 1-10 for {domain}. Skip if location incomplete."""
+[{{"name": "Full Name", "firm": "VC Firm", "location": "City, Country", "links": ["url1"], "match_score": 7, "explanation": {{"recent_investments": ["bullet1", "bullet2"], "investment_thesis": ["bullet1", "bullet2"], "how_to_pitch": ["bullet1", "bullet2"]}}}}]
+Individual VCs with "City, Country" location. Include match_score 1-10 for {domain} and explanation object. Skip if location incomplete."""
     ]
     
     async with AsyncPerplexity() as client:
