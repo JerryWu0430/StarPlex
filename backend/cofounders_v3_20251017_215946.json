@@ -1,0 +1,307 @@
+[
+  {
+    "name": "Patrick Soon-Shiong",
+    "location": "Los Angeles, USA",
+    "links": [
+      "https://en.wikipedia.org/wiki/Patrick_Soon-Shiong",
+      "https://www.linkedin.com/in/patrick-soon-shiong-6a05185/"
+    ],
+    "match_score": 10,
+    "coordinates": {
+      "latitude": 34.0536909,
+      "longitude": -118.242766
+    }
+  },
+  {
+    "name": "Ashish Jha",
+    "location": "Providence, USA",
+    "links": [
+      "https://mollieplotkingroup.com/top-healthcare-keynote-speakers/"
+    ],
+    "match_score": 10,
+    "coordinates": {
+      "latitude": 41.8239891,
+      "longitude": -71.4128343
+    }
+  },
+  {
+    "name": "Kiran Mazumdar-Shaw",
+    "location": "Bangalore, India",
+    "links": [
+      "https://en.wikipedia.org/wiki/Kiran_Mazumdar-Shaw",
+      "https://www.linkedin.com/in/kiranmazumdars/"
+    ],
+    "match_score": 9,
+    "coordinates": {
+      "latitude": 12.9767936,
+      "longitude": 77.590082
+    }
+  },
+  {
+    "name": "Anne Wojcicki",
+    "location": "Menlo Park, USA",
+    "links": [
+      "https://en.wikipedia.org/wiki/Anne_Wojcicki",
+      "https://www.linkedin.com/in/annewojcicki/"
+    ],
+    "match_score": 9,
+    "coordinates": {
+      "latitude": 37.4519671,
+      "longitude": -122.177992
+    }
+  },
+  {
+    "name": "Manmohan Singh",
+    "location": "Cambridge, USA",
+    "links": [
+      "https://thehealthcaretechnologyreport.com/the-top-25-healthcare-technology-ctos-of-2023/"
+    ],
+    "match_score": 9,
+    "coordinates": {
+      "latitude": 42.3656347,
+      "longitude": -71.1040018
+    }
+  },
+  {
+    "name": "John Rodini",
+    "location": "Minneapolis, USA",
+    "links": [
+      "https://thehealthcaretechnologyreport.com/the-top-25-healthcare-technology-ctos-of-2023/"
+    ],
+    "match_score": 9,
+    "coordinates": {
+      "latitude": 44.9772995,
+      "longitude": -93.2654692
+    }
+  },
+  {
+    "name": "Eileen Jennings-Brown",
+    "location": "Oxford, UK",
+    "links": [
+      "https://thehealthcaretechnologyreport.com/the-top-25-healthcare-technology-ctos-of-2023/"
+    ],
+    "match_score": 9,
+    "coordinates": {
+      "latitude": 51.7520131,
+      "longitude": -1.2578499
+    }
+  },
+  {
+    "name": "Harpreet Singh Rai",
+    "location": "San Francisco, USA",
+    "links": [
+      "https://www.athelas.com/tbh/11-y-combinator-startups-shaping-the-future-of-healthcare"
+    ],
+    "match_score": 9,
+    "coordinates": {
+      "latitude": 37.7792588,
+      "longitude": -122.4193286
+    }
+  },
+  {
+    "name": "Zachariah Reitano",
+    "location": "San Francisco, USA",
+    "links": [
+      "https://www.athelas.com/tbh/11-y-combinator-startups-shaping-the-future-of-healthcare"
+    ],
+    "match_score": 9,
+    "coordinates": {
+      "latitude": 37.7792588,
+      "longitude": -122.4193286
+    }
+  },
+  {
+    "name": "Daniel Kraft",
+    "location": "Palo Alto, USA",
+    "links": [
+      "https://mollieplotkingroup.com/top-healthcare-keynote-speakers/"
+    ],
+    "match_score": 9,
+    "coordinates": {
+      "latitude": 37.4443293,
+      "longitude": -122.1598465
+    }
+  },
+  {
+    "name": "Geeta Nayyar",
+    "location": "San Francisco, USA",
+    "links": [
+      "https://gothamartists.com/trending-healthcare-industry-keynote-speakers-in-2025/"
+    ],
+    "match_score": 9,
+    "coordinates": {
+      "latitude": 37.7792588,
+      "longitude": -122.4193286
+    }
+  },
+  {
+    "name": "Sebastien Bureau",
+    "location": "Montreal, Canada",
+    "links": [
+      "https://www.linkedin.com/in/sebastienbureau/",
+      "https://www.crunchbase.com/person/sebastien-bureau"
+    ],
+    "match_score": 8,
+    "coordinates": {
+      "latitude": 45.5031824,
+      "longitude": -73.5698065
+    }
+  },
+  {
+    "name": "Milan Shah",
+    "location": "Boston, USA",
+    "links": [
+      "https://thehealthcaretechnologyreport.com/the-top-25-healthcare-technology-ctos-of-2023/"
+    ],
+    "match_score": 8,
+    "coordinates": {
+      "latitude": 42.3554334,
+      "longitude": -71.060511
+    }
+  },
+  {
+    "name": "Simon Kaluza",
+    "location": "New Haven, USA",
+    "links": [
+      "https://theorg.com/org/inbox-health/org-chart/simon-kaluza"
+    ],
+    "match_score": 8,
+    "coordinates": {
+      "latitude": 41.3082138,
+      "longitude": -72.9250518
+    }
+  },
+  {
+    "name": "Sid Malhotra",
+    "location": "San Francisco, USA",
+    "links": [
+      "https://topstartups.io/?industries=Healthcare"
+    ],
+    "match_score": 8,
+    "coordinates": {
+      "latitude": 37.7792588,
+      "longitude": -122.4193286
+    }
+  },
+  {
+    "name": "Patrick Hruby",
+    "location": "San Francisco, USA",
+    "links": [
+      "https://topstartups.io/?industries=Healthcare"
+    ],
+    "match_score": 8,
+    "coordinates": {
+      "latitude": 37.7792588,
+      "longitude": -122.4193286
+    }
+  },
+  {
+    "name": "Chris Cutter",
+    "location": "San Francisco, USA",
+    "links": [
+      "https://elevateventures.com/137-healthcare-entrepreneurs-to-know/"
+    ],
+    "match_score": 8,
+    "coordinates": {
+      "latitude": 37.7792588,
+      "longitude": -122.4193286
+    }
+  },
+  {
+    "name": "Nick Culbertson",
+    "location": "Baltimore, USA",
+    "links": [
+      "https://elevateventures.com/137-healthcare-entrepreneurs-to-know/"
+    ],
+    "match_score": 8,
+    "coordinates": {
+      "latitude": 39.2908816,
+      "longitude": -76.610759
+    }
+  },
+  {
+    "name": "Shweta Maniar",
+    "location": "Mountain View, USA",
+    "links": [
+      "https://mollieplotkingroup.com/top-healthcare-keynote-speakers/"
+    ],
+    "match_score": 8,
+    "coordinates": {
+      "latitude": 37.3893889,
+      "longitude": -122.0832101
+    }
+  },
+  {
+    "name": "Rubin Pillay",
+    "location": "Johannesburg, South Africa",
+    "links": [
+      "https://gothamartists.com/trending-healthcare-industry-keynote-speakers-in-2025/"
+    ],
+    "match_score": 8,
+    "coordinates": {
+      "latitude": -26.205,
+      "longitude": 28.049722
+    }
+  },
+  {
+    "name": "Steve Curd",
+    "location": "Unknown, USA",
+    "links": [
+      "https://elevateventures.com/137-healthcare-entrepreneurs-to-know/"
+    ],
+    "match_score": 7,
+    "coordinates": {
+      "latitude": 48.2748448,
+      "longitude": -121.7424558
+    }
+  },
+  {
+    "name": "James Dias",
+    "location": "Unknown, USA",
+    "links": [
+      "https://elevateventures.com/137-healthcare-entrepreneurs-to-know/"
+    ],
+    "match_score": 7,
+    "coordinates": {
+      "latitude": 48.2748448,
+      "longitude": -121.7424558
+    }
+  },
+  {
+    "name": "Gaspard De Dreuzy",
+    "location": "Unknown, USA",
+    "links": [
+      "https://elevateventures.com/137-healthcare-entrepreneurs-to-know/"
+    ],
+    "match_score": 7,
+    "coordinates": {
+      "latitude": 48.2748448,
+      "longitude": -121.7424558
+    }
+  },
+  {
+    "name": "Adam Richichi",
+    "location": "Danbury, USA",
+    "links": [
+      "https://www.scale-community.com/scale-top-60-most-influential-2025/"
+    ],
+    "match_score": 7,
+    "coordinates": {
+      "latitude": 41.394817,
+      "longitude": -73.4540111
+    }
+  },
+  {
+    "name": "Elizabeth Holmes",
+    "location": "San Francisco, USA",
+    "links": [
+      "https://en.wikipedia.org/wiki/Elizabeth_Holmes",
+      "https://www.linkedin.com/in/elizabeth-holmes-logic/"
+    ],
+    "match_score": 6,
+    "coordinates": {
+      "latitude": 37.7792588,
+      "longitude": -122.4193286
+    }
+  }
+]
