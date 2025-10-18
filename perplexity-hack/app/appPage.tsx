@@ -7,11 +7,12 @@ import { InputGroup, InputGroupButton, InputGroupAddon, InputGroupText, InputGro
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { ArrowUpIcon, LoaderIcon, PlusIcon, CheckCircle2, XCircle } from "lucide-react";
-import { findCompetitors, findVCs, findCofounders, getAudienceMap, type CompetitorResponse, type VCResponse, type CofounderResponse } from "@/lib/api";
+import { findCompetitors, findVCs, findCofounders, getAudienceMap, sendChatMessage, type CompetitorResponse, type VCResponse, type CofounderResponse, type ChatMessage } from "@/lib/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Feature } from "geojson";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
-type LoadingStatus = "competitors" | "vcs" | "cofounders" | "demographics" | null;
+type LoadingStatus = "competitors" | "vcs" | "cofounders" | "demographics" | "chat" | null;
 type AlertType = { type: "success" | "error"; message: string } | null;
 
 interface AppPageProps {
@@ -36,9 +37,12 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
   const [currentLoading, setCurrentLoading] = useState<LoadingStatus>(null);
   const [alert, setAlert] = useState<AlertType>(null);
 
-  // Sidebar state for heatmap details
-  const [isSidebarVisible, setIsSidebarVisible] = useState(false);
-  const [selectedHeatmapFeature, setSelectedHeatmapFeature] = useState<Feature | null>(null);
+  // Chatbot states
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatExpanded, setIsChatExpanded] = useState(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const startupIdea = initialQuery?.trim() || "";
 
@@ -176,8 +180,66 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
         return "Loading potential cofounders...";
       case "demographics":
         return "Loading customer demographics...";
+      case "chat":
+        return "Thinking...";
       default:
         return null;
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim() || currentLoading === "chat") return;
+
+    const userMessage = chatInput.trim();
+    setChatInput("");
+
+    // Add user message to chat
+    const newUserMessage: ChatMessage = {
+      role: "user",
+      content: userMessage,
+    };
+    setChatMessages((prev) => [...prev, newUserMessage]);
+    setIsChatExpanded(true);
+
+    // Prepare context from cached data
+    const contextData = {
+      vcs: vcsData?.vcs,
+      cofounders: cofoundersData?.cofounders,
+      competitors: competitorsData?.competitors,
+      demographics: demographicsData,
+    };
+
+    // Send to backend with context
+    setCurrentLoading("chat");
+    try {
+      const response = await sendChatMessage(startupIdea, userMessage, contextData);
+      
+      // Add assistant response to chat
+      const assistantMessage: ChatMessage = {
+        role: "assistant",
+        content: response.response,
+      };
+      setChatMessages((prev) => [...prev, assistantMessage]);
+    } catch (error: any) {
+      console.error("Chat error:", error);
+      setAlert({ type: "error", message: "Failed to get response from AI" });
+      setTimeout(() => setAlert(null), 3000);
+      
+      // Add error message to chat
+      const errorMessage: ChatMessage = {
+        role: "assistant",
+        content: "Sorry, I encountered an error. Please try again.",
+      };
+      setChatMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setCurrentLoading(null);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
     }
   };
 
@@ -291,44 +353,96 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
         </div>
       </div>
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-full max-w-xl opacity-95">
-        <InputGroup>
-          <InputGroupTextarea placeholder="Ask, Search or Chat..." />
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-full max-w-xl">
+        {/* Chat messages - expand upward */}
+        {isChatExpanded && chatMessages.length > 0 && (
+          <div 
+            ref={chatContainerRef}
+            className="mb-2 max-h-96 overflow-y-auto flex flex-col-reverse gap-2 px-2"
+          >
+            {/* Reverse the array so newest messages are at the bottom visually but container scrolls from bottom */}
+            {[...chatMessages].reverse().map((msg, idx) => (
+              <div
+                key={chatMessages.length - 1 - idx}
+                className={`p-3 rounded-lg ${
+                  msg.role === "user"
+                    ? "bg-primary text-primary-foreground ml-auto max-w-[80%]"
+                    : "bg-card border shadow-sm mr-auto max-w-[85%]"
+                }`}
+              >
+                {msg.role === "user" ? (
+                  <div className="text-sm whitespace-pre-wrap break-words">
+                    {msg.content}
+                  </div>
+                ) : (
+                  <MarkdownRenderer content={msg.content} className="text-sm" />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Chat input */}
+        <InputGroup className="opacity-95">
+          <InputGroupTextarea
+            ref={textareaRef}
+            placeholder="Ask, Search or Chat..."
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="min-h-[60px] max-h-32 resize-none"
+          />
           <InputGroupAddon align="block-end">
             <InputGroupButton
               variant="outline"
               className="rounded-full"
               size="icon-xs"
+              onClick={() => setIsChatExpanded(!isChatExpanded)}
             >
               <PlusIcon />
             </InputGroupButton>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <InputGroupButton variant="ghost">Competitor Analysis</InputGroupButton>
+                <InputGroupButton variant="ghost">Quick Actions</InputGroupButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 side="top"
                 align="start"
                 className="[--radius:0.95rem]"
               >
-                <DropdownMenuItem>Competitors Analysis</DropdownMenuItem>
-                <DropdownMenuItem>Customer Demographics</DropdownMenuItem>
-                <DropdownMenuItem>VC Victims</DropdownMenuItem>
-                <DropdownMenuItem>Co-ballers</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setChatInput("Tell me about my competitors")}>
+                  Competitor Analysis
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setChatInput("Who is my target customer?")}>
+                  Customer Demographics
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setChatInput("Which VCs should I target?")}>
+                  VC Recommendations
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setChatInput("What skills should I look for in a cofounder?")}>
+                  Cofounder Advice
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <InputGroupText className="ml-auto"></InputGroupText>
             <InputGroupText className="ml-auto"></InputGroupText>
             <Separator orientation="vertical" className="!h-4" />
             <InputGroupButton
               variant="default"
               className="rounded-full"
               size="icon-xs"
-              disabled
+              onClick={handleSendMessage}
+              disabled={!chatInput.trim() || currentLoading === "chat"}
             >
-              <ArrowUpIcon />
+              {currentLoading === "chat" ? (
+                <LoaderIcon className="animate-spin" />
+              ) : (
+                <ArrowUpIcon />
+              )}
               <span className="sr-only">Send</span>
             </InputGroupButton>
           </InputGroupAddon>
+        </InputGroup>
         </InputGroup>
       </div>
       <div className="absolute inset-0 w-full h-full">
