@@ -82,6 +82,7 @@ export default function AudienceMap({
       pitch: 0,
       bearing: 0,
       antialias: true,
+      attributionControl: false,
     });
     mapRef.current = map;
 
