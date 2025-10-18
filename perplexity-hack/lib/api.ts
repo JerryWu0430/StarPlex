@@ -68,7 +68,8 @@ export async function findCompetitors(idea: string, maxResults: number = 20): Pr
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to find competitors: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(`Failed to find competitors: ${errorData.detail || response.statusText}`);
   }
 
   return response.json();
@@ -88,7 +89,8 @@ export async function findVCs(idea: string, maxResults: number = 20): Promise<VC
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to find VCs: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(`Failed to find VCs: ${errorData.detail || response.statusText}`);
   }
 
   return response.json();
@@ -108,7 +110,8 @@ export async function findCofounders(idea: string, maxResults: number = 20): Pro
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to find cofounders: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(`Failed to find cofounders: ${errorData.detail || response.statusText}`);
   }
 
   return response.json();
@@ -131,7 +134,8 @@ export async function getAudienceMap(
   const response = await fetch(`${API_BASE_URL}/audience-map?${params.toString()}`);
 
   if (!response.ok) {
-    throw new Error(`Failed to get audience map: ${response.statusText}`);
+    const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+    throw new Error(`Failed to get audience map: ${errorData.detail || response.statusText}`);
   }
 
   return response.json();

@@ -13,7 +13,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 type LoadingStatus = "competitors" | "vcs" | "cofounders" | "demographics" | null;
 type AlertType = { type: "success" | "error"; message: string } | null;
 
-export default function AppPage({ initialQuery }: { initialQuery?: string }) {
+interface AppPageProps {
+  initialQuery?: string;
+  onGeneratePitchDeck?: () => void;
+  isGeneratingPitchDeck?: boolean;
+}
+
+export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratingPitchDeck = false }: AppPageProps) {
   const [showVCs, setShowVCs] = useState(false);
   const [showCompetitors, setShowCompetitors] = useState(false);
   const [showDemographics, setShowDemographics] = useState(false);
@@ -29,13 +35,22 @@ export default function AppPage({ initialQuery }: { initialQuery?: string }) {
   const [currentLoading, setCurrentLoading] = useState<LoadingStatus>(null);
   const [alert, setAlert] = useState<AlertType>(null);
 
-  const startupIdea = initialQuery || "";
+  const startupIdea = initialQuery?.trim() || "";
 
   // Fetch ALL data sequentially - one at a time
   useEffect(() => {
-    if (!startupIdea) return;
+    if (!startupIdea || startupIdea.length < 3) {
+      console.warn("Skipping data fetch: startup idea is empty or too short");
+      return;
+    }
 
     const fetchDataSequentially = async () => {
+      // Clear old cached data when starting new fetch
+      setCompetitorsData(null);
+      setVCsData(null);
+      setCofoundersData(null);
+      setDemographicsData(null);
+
       // 1. Fetch competitors
       setCurrentLoading("competitors");
       try {
@@ -98,8 +113,7 @@ export default function AppPage({ initialQuery }: { initialQuery?: string }) {
     };
 
     fetchDataSequentially();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps - only run once on mount
+  }, [startupIdea]); // Re-fetch when startup idea changes
 
   const getLoadingMessage = () => {
     switch (currentLoading) {
@@ -173,18 +187,39 @@ export default function AppPage({ initialQuery }: { initialQuery?: string }) {
           checked={showCofounders}
           onCheckedChange={setShowCofounders}
         />
+        {onGeneratePitchDeck && (
+          <div className="w-full max-w-xs">
+            <button
+              onClick={onGeneratePitchDeck}
+              disabled={isGeneratingPitchDeck}
+              className="w-full border p-3 shadow-sm bg-card opacity-90 rounded-lg transition-all duration-200 hover:opacity-100 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-left flex-1">
+                  <div className="text-sm font-medium leading-snug">
+                    {isGeneratingPitchDeck ? "Generating Pitch Deck..." : "Generate Pitch Deck"}
+                  </div>
+                  <div className="text-xs text-muted-foreground leading-normal font-normal">
+                    {isGeneratingPitchDeck
+                      ? "AI is creating your presentation..."
+                      : "Create investor-ready slides with AI"}
+                  </div>
+                </div>
+                {isGeneratingPitchDeck ? (
+                  <svg className="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                )}
+              </div>
+            </button>
+          </div>
+        )}
       </div>
-      <InputGroup data-disabled>
-        <InputGroupInput placeholder="Refreshing data..." disabled />
-        <InputGroupAddon>
-          <LoaderIcon className="animate-spin" />
-        </InputGroupAddon>
-        <InputGroupAddon align="inline-end">
-          <InputGroupText className="text-muted-foreground">
-            Please wait...
-          </InputGroupText>
-        </InputGroupAddon>
-      </InputGroup>
 
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 w-full max-w-xl opacity-95">
       <InputGroup>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import mapboxgl, { Map, Marker, LngLatBounds, FillExtrusionLayer } from "mapbox-gl";
 import type { FeatureCollection, Feature, Point } from "geojson";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -89,7 +89,7 @@ export default function AudienceMap({
   const [heatmapData, setHeatmapData] = useState<AudienceCollection | null>(null);
 
   /** Add heatmap layer for audience data */
-  const addHeatmapLayer = () => {
+  const addHeatmapLayer = useCallback(() => {
     const map = mapRef.current;
     if (!map || !heatmapData || !map.getSource("audience-heatmap")) return;
 
@@ -166,10 +166,10 @@ export default function AudienceMap({
         });
       }
     }
-  };
+  }, [heatmapData, onHeatmapClick]);
 
   /** Remove heatmap layer */
-  const removeHeatmapLayer = () => {
+  const removeHeatmapLayer = useCallback(() => {
     const map = mapRef.current;
     if (!map) return;
 
@@ -179,7 +179,7 @@ export default function AudienceMap({
     if (map.getSource("audience-heatmap")) {
       map.removeSource("audience-heatmap");
     }
-  };
+  }, []);
 
   /** Initialize the map ONCE */
   useEffect(() => {
@@ -616,7 +616,7 @@ export default function AudienceMap({
     } else {
       removeHeatmapLayer();
     }
-  }, [showDemographics, heatmapData]);
+  }, [showDemographics, heatmapData, addHeatmapLayer, removeHeatmapLayer]);
 
   /** Toggle styles using setStyle (no re-init) and preserve globe */
   const handleToggleTheme = () => {
