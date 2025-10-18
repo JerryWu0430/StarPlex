@@ -32,6 +32,11 @@ type AudienceMapProps = {
   /** Container style/class */
   style?: React.CSSProperties;
   className?: string;
+  /** Toggle flags for different overlays */
+  showVCs?: boolean;
+  showCompetitors?: boolean;
+  showDemographics?: boolean;
+  showCofounders?: boolean;
 };
 
 /** ---------- Styles ---------- */
@@ -57,10 +62,17 @@ export default function AudienceMap({
   enableThemeToggle = false,
   style,
   className,
+  showVCs = false,
+  showCompetitors = false,
+  showDemographics = false,
+  showCofounders = false,
 }: AudienceMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const markersRef = useRef<Marker[]>([]);
+  const vcMarkersRef = useRef<Marker[]>([]);
+  const competitorMarkersRef = useRef<Marker[]>([]);
+  const cofounderMarkersRef = useRef<Marker[]>([]);
   const [styleUrl, setStyleUrl] = useState<string>(initialStyle);
 
   /** Initialize the map ONCE */
@@ -199,12 +211,309 @@ export default function AudienceMap({
     return () => {
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
+      vcMarkersRef.current.forEach((m) => m.remove());
+      vcMarkersRef.current = [];
+      competitorMarkersRef.current.forEach((m) => m.remove());
+      competitorMarkersRef.current = [];
+      cofounderMarkersRef.current.forEach((m) => m.remove());
+      cofounderMarkersRef.current = [];
       map.remove();
       mapRef.current = null;
     };
     // init once
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  /** Handle VC toggle - fetch and display VCs as pins */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Remove existing VC markers
+    vcMarkersRef.current.forEach((m) => m.remove());
+    vcMarkersRef.current = [];
+
+    if (!showVCs) return;
+
+    // Fetch VCs from backend
+    const fetchVCs = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/find-vcs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            idea: "AI for legal technology",
+            max_results: 20,
+            include_coordinates: true,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch VCs: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("VCs fetched:", data);
+
+        // Add VC markers to the map
+        data.vcs.forEach((vc: any) => {
+          const { coordinates, name, firm, location, links, match_score } = vc;
+
+          if (!coordinates?.latitude || !coordinates?.longitude) return;
+
+          // Create popup HTML with VC information
+          const popupHtml = `
+            <div style="min-width:250px; max-width:300px;">
+              <h3 style="margin:0 0 8px 0; font-size: 17px; font-weight: 700; color: #10b981;">${name || 'N/A'}</h3>
+              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Firm:</strong> ${firm || 'N/A'}</p>
+              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Location:</strong> ${location || 'N/A'}</p>
+              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Match Score:</strong> ${match_score || 0}/10</p>
+              ${links && links.length > 0 ? `
+                <div style="margin-top: 8px;">
+                  <p style="margin: 4px 0; font-weight: 600; font-size: 14px; color: #333;">Links:</p>
+                  ${links.map((link: string) => `
+                    <a href="${link}" target="_blank" rel="noopener noreferrer" 
+                       style="display: block; margin: 2px 0; color: #0066cc; font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                      ${link.includes('linkedin') ? '💼 LinkedIn' : 
+                        link.includes('twitter') || link.includes('x.com') ? '🐦 Twitter' : 
+                        link.includes('crunchbase') ? '📊 Crunchbase' : '🔗 Link'}
+                    </a>
+                  `).join('')}
+                </div>
+              ` : ''}
+            </div>
+          `;
+
+          const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
+
+          // Create a custom VC marker element (different color to distinguish from audience)
+          const el = document.createElement("div");
+          el.className = "vc-marker";
+          el.style.cssText = `
+            background-color: #10b981;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+          `;
+          el.innerHTML = "💰";
+
+          const marker = new mapboxgl.Marker({ element: el, draggable: false })
+            .setLngLat([coordinates.longitude, coordinates.latitude])
+            .setPopup(popup)
+            .addTo(map);
+
+          vcMarkersRef.current.push(marker);
+        });
+      } catch (error) {
+        console.error("Error fetching VCs:", error);
+      }
+    };
+
+    fetchVCs();
+  }, [showVCs]);
+
+  /** Handle Competitor toggle - fetch and display competitors as pins */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Remove existing competitor markers
+    competitorMarkersRef.current.forEach((m) => m.remove());
+    competitorMarkersRef.current = [];
+
+    if (!showCompetitors) return;
+
+    // Fetch competitors from backend
+    const fetchCompetitors = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/find-competitors", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            idea: "AI for legal technology",
+            max_results: 20,
+            include_coordinates: true,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch competitors: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Competitors fetched:", data);
+
+        // Add competitor markers to the map
+        data.competitors.forEach((competitor: any) => {
+          const { coordinates, company_name, location, links, date_founded, threat_score } = competitor;
+
+          if (!coordinates?.latitude || !coordinates?.longitude) return;
+
+          // Create popup HTML with competitor information
+          const popupHtml = `
+            <div style="min-width:250px; max-width:300px;">
+              <h3 style="margin:0 0 8px 0; font-size: 17px; font-weight: 700; color: #ef4444;">${company_name || 'N/A'}</h3>
+              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Location:</strong> ${location || 'N/A'}</p>
+              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Founded:</strong> ${date_founded || 'Unknown'}</p>
+              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Threat Score:</strong> ${threat_score || 0}/10</p>
+              ${links && links.length > 0 ? `
+                <div style="margin-top: 8px;">
+                  <p style="margin: 4px 0; font-weight: 600; font-size: 14px; color: #333;">Links:</p>
+                  ${links.map((link: string) => `
+                    <a href="${link}" target="_blank" rel="noopener noreferrer" 
+                       style="display: block; margin: 2px 0; color: #0066cc; font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                      ${link.includes('crunchbase') ? '📊 Crunchbase' : 
+                        link.includes('techcrunch') ? '📰 TechCrunch' : 
+                        link.includes('producthunt') ? '🚀 Product Hunt' : '🔗 Website'}
+                    </a>
+                  `).join('')}
+                </div>
+              ` : ''}
+            </div>
+          `;
+
+          const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
+
+          // Create a custom competitor marker element (red color to distinguish)
+          const el = document.createElement("div");
+          el.className = "competitor-marker";
+          el.style.cssText = `
+            background-color: #ef4444;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+          `;
+          el.innerHTML = "⚔️";
+
+          const marker = new mapboxgl.Marker({ element: el, draggable: false })
+            .setLngLat([coordinates.longitude, coordinates.latitude])
+            .setPopup(popup)
+            .addTo(map);
+
+          competitorMarkersRef.current.push(marker);
+        });
+      } catch (error) {
+        console.error("Error fetching competitors:", error);
+      }
+    };
+
+    fetchCompetitors();
+  }, [showCompetitors]);
+
+  /** Handle Cofounder toggle - fetch and display cofounders as pins */
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Remove existing cofounder markers
+    cofounderMarkersRef.current.forEach((m) => m.remove());
+    cofounderMarkersRef.current = [];
+
+    if (!showCofounders) return;
+
+    // Fetch cofounders from backend
+    const fetchCofounders = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/find-cofounders", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            idea: "AI for legal technology",
+            max_results: 20,
+            include_coordinates: true,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch cofounders: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Cofounders fetched:", data);
+
+        // Add cofounder markers to the map
+        data.cofounders.forEach((cofounder: any) => {
+          const { coordinates, name, location, links, match_score } = cofounder;
+
+          if (!coordinates?.latitude || !coordinates?.longitude) return;
+
+          // Create popup HTML with cofounder information
+          const popupHtml = `
+            <div style="min-width:250px; max-width:300px;">
+              <h3 style="margin:0 0 8px 0; font-size: 17px; font-weight: 700; color: #8b5cf6;">${name || 'N/A'}</h3>
+              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Location:</strong> ${location || 'N/A'}</p>
+              <p style="margin: 4px 0; color: #333; font-size: 14px;"><strong>Match Score:</strong> ${match_score || 0}/10</p>
+              ${links && links.length > 0 ? `
+                <div style="margin-top: 8px;">
+                  <p style="margin: 4px 0; font-weight: 600; font-size: 14px; color: #333;">Links:</p>
+                  ${links.map((link: string) => `
+                    <a href="${link}" target="_blank" rel="noopener noreferrer" 
+                       style="display: block; margin: 2px 0; color: #0066cc; font-size: 13px; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                      ${link.includes('linkedin') ? '💼 LinkedIn' : 
+                        link.includes('twitter') || link.includes('x.com') ? '🐦 Twitter' : 
+                        link.includes('github') ? '💻 GitHub' : 
+                        link.includes('angellist') ? '👼 AngelList' : '🔗 Link'}
+                    </a>
+                  `).join('')}
+                </div>
+              ` : ''}
+            </div>
+          `;
+
+          const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
+
+          // Create a custom cofounder marker element (purple color to distinguish)
+          const el = document.createElement("div");
+          el.className = "cofounder-marker";
+          el.style.cssText = `
+            background-color: #8b5cf6;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+          `;
+          el.innerHTML = "🤝";
+
+          const marker = new mapboxgl.Marker({ element: el, draggable: false })
+            .setLngLat([coordinates.longitude, coordinates.latitude])
+            .setPopup(popup)
+            .addTo(map);
+
+          cofounderMarkersRef.current.push(marker);
+        });
+      } catch (error) {
+        console.error("Error fetching cofounders:", error);
+      }
+    };
+
+    fetchCofounders();
+  }, [showCofounders]);
 
   /** Toggle styles using setStyle (no re-init) and preserve globe */
   const handleToggleTheme = () => {
