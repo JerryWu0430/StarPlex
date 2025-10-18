@@ -28,7 +28,7 @@ async def query_perplexity(client, prompt: str):
                 "role": "system",
                 "content": """You are a precise research assistant that returns structured data about competing companies.
 CRITICAL: Return ONLY valid JSON. Do not include any explanatory text before or after the JSON.
-Format: [{"company_name": "Company Inc", "location": "City, Country", "links": ["url1", "url2"], "date_founded": "2020", "threat_score": 8}]
+Format: [{"company_name": "Company Inc", "location": "City, Country", "links": ["url1", "url2"], "date_founded": "2020", "threat_score": 8, "explanation": {"angle": ["bullet1", "bullet2"], "what_they_cover": ["bullet1", "bullet2"], "gaps": ["bullet1", "bullet2"]}}]
 IMPORTANT: 
 - company_name: The official company name
 - location: MUST be in "City, Country" format for company headquarters (e.g., "San Francisco, USA" or "London, UK")
@@ -37,6 +37,10 @@ IMPORTANT:
 - threat_score: Rate 1-10 how much of a competitive threat this company is
   * Consider: market position, funding, traction, product maturity, target market overlap
   * 1-3: Minor threat, 4-6: Moderate threat, 7-8: Significant threat, 9-10: Major threat
+- explanation: Object with 3 sections, each containing 1-3 bullet points:
+  * angle: Their competitive positioning and unique approach
+  * what_they_cover: Market segments and areas they serve
+  * gaps: What they don't cover or areas of weakness
 - Only include real companies with verifiable information."""
             },
             {
@@ -52,7 +56,7 @@ async def find_competitors_comprehensive(domain: str):
     
     queries = [
         f"""Find 5 top competitors and companies in the {domain} space. Return ONLY a JSON array with this exact format:
-[{{"company_name": "Company Name", "location": "City, Country", "links": ["website_url", "crunchbase_url"], "date_founded": "2020", "threat_score": 8}}]
+[{{"company_name": "Company Name", "location": "City, Country", "links": ["website_url", "crunchbase_url"], "date_founded": "2020", "threat_score": 8, "explanation": {{"angle": ["bullet1", "bullet2"], "what_they_cover": ["bullet1", "bullet2"], "gaps": ["bullet1", "bullet2"]}}}}]
 
 CRITICAL Requirements:
 - company_name: Official company name
@@ -60,31 +64,32 @@ CRITICAL Requirements:
 - links: At least 1 URL (company website, Crunchbase, TechCrunch article, etc.)
 - date_founded: Year founded (e.g., "2020") or "Unknown"
 - threat_score: 1-10 rating of competitive threat in {domain}
+- explanation: Object with angle, what_they_cover, and gaps arrays (1-3 bullets each)
 Only include verified real companies with known city and country.""",
 
         f"""Find 5 well-funded startups competing in {domain}. Return ONLY JSON:
-[{{"company_name": "Company Name", "location": "City, Country", "links": ["url1", "url2"], "date_founded": "2019", "threat_score": 9}}]
-Location MUST be "City, Country" format. Include threat_score 1-10. Skip entries without both city and country.""",
+[{{"company_name": "Company Name", "location": "City, Country", "links": ["url1", "url2"], "date_founded": "2019", "threat_score": 9, "explanation": {{"angle": ["bullet1", "bullet2"], "what_they_cover": ["bullet1", "bullet2"], "gaps": ["bullet1", "bullet2"]}}}}]
+Location MUST be "City, Country" format. Include threat_score 1-10 and explanation object. Skip entries without both city and country.""",
 
         f"""Search Crunchbase and TechCrunch for companies in {domain} that recently raised funding. Return ONLY JSON:
-[{{"company_name": "Company Name", "location": "City, Country", "links": ["url1"], "date_founded": "2021", "threat_score": 7}}]
-Must be real companies with "City, Country" location. Include threat_score 1-10. Omit if location is unknown.""",
+[{{"company_name": "Company Name", "location": "City, Country", "links": ["url1"], "date_founded": "2021", "threat_score": 7, "explanation": {{"angle": ["bullet1", "bullet2"], "what_they_cover": ["bullet1", "bullet2"], "gaps": ["bullet1", "bullet2"]}}}}]
+Must be real companies with "City, Country" location. Include threat_score 1-10 and explanation object. Omit if location is unknown.""",
 
         f"""Find YC-backed and accelerator companies in {domain}. Return ONLY JSON:
-[{{"company_name": "Company Name", "location": "City, Country", "links": ["url1"], "date_founded": "2022", "threat_score": 8}}]
-Real companies only. Include threat_score 1-10. Location must include both city and country.""",
+[{{"company_name": "Company Name", "location": "City, Country", "links": ["url1"], "date_founded": "2022", "threat_score": 8, "explanation": {{"angle": ["bullet1", "bullet2"], "what_they_cover": ["bullet1", "bullet2"], "gaps": ["bullet1", "bullet2"]}}}}]
+Real companies only. Include threat_score 1-10 and explanation object. Location must include both city and country.""",
 
         f"""Search for emerging and established players in {domain}. Return ONLY JSON:
-[{{"company_name": "Company Name", "location": "City, Country", "links": ["url1"], "date_founded": "2018", "threat_score": 6}}]
-Companies with "City, Country" location format. Include threat_score 1-10.""",
+[{{"company_name": "Company Name", "location": "City, Country", "links": ["url1"], "date_founded": "2018", "threat_score": 6, "explanation": {{"angle": ["bullet1", "bullet2"], "what_they_cover": ["bullet1", "bullet2"], "gaps": ["bullet1", "bullet2"]}}}}]
+Companies with "City, Country" location format. Include threat_score 1-10 and explanation object.""",
 
         f"""Find direct and indirect competitors to a startup in {domain}. Return ONLY JSON:
-[{{"company_name": "Company Name", "location": "City, Country", "links": ["url1"], "date_founded": "2020", "threat_score": 7}}]
-Real companies with verified links. Include threat_score 1-10. Location: "City, Country" format only.""",
+[{{"company_name": "Company Name", "location": "City, Country", "links": ["url1"], "date_founded": "2020", "threat_score": 7, "explanation": {{"angle": ["bullet1", "bullet2"], "what_they_cover": ["bullet1", "bullet2"], "gaps": ["bullet1", "bullet2"]}}}}]
+Real companies with verified links. Include threat_score 1-10 and explanation object. Location: "City, Country" format only.""",
 
         f"""Search Product Hunt and news for companies building in {domain}. Return ONLY JSON:
-[{{"company_name": "Company Name", "location": "City, Country", "links": ["url1"], "date_founded": "2023", "threat_score": 5}}]
-Companies with "City, Country" location. Include threat_score 1-10. Skip if location incomplete."""
+[{{"company_name": "Company Name", "location": "City, Country", "links": ["url1"], "date_founded": "2023", "threat_score": 5, "explanation": {{"angle": ["bullet1", "bullet2"], "what_they_cover": ["bullet1", "bullet2"], "gaps": ["bullet1", "bullet2"]}}}}]
+Companies with "City, Country" location. Include threat_score 1-10 and explanation object. Skip if location incomplete."""
     ]
     
     async with AsyncPerplexity() as client:

@@ -74,10 +74,10 @@ export default function AudienceMap({
   enableThemeToggle = false,
   style,
   className,
-  showVCs = false,
-  showCompetitors = false,
-  showDemographics = false,
-  showCofounders = false,
+  showVCs = true,
+  showCompetitors = true,
+  showDemographics = true,
+  showCofounders = true,
   onHeatmapClick,
 }: AudienceMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -125,35 +125,6 @@ export default function AudienceMap({
     // Clear existing markers
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
-
-    // Add markers + popups (only if demographics is not enabled - we show heatmap instead)
-    if (!showDemographics) {
-      data.features.forEach((feature: AudienceFeature) => {
-        const { coordinates } = feature.geometry;
-        const props = feature.properties ?? {};
-
-        const popupHtml = `
-          <div style="min-width:200px">
-            <h3 style="margin:0 0 6px 0">${props.name ?? ""}</h3>
-            ${props.description ? `<p>${props.description}</p>` : ""}
-            ${props.target_fit ? `<p><strong>Target fit:</strong> ${props.target_fit}</p>` : ""}
-            ${props.display_name ? `<p style="font-size:0.8em;color:#555">${props.display_name}</p>` : ""}
-          </div>`;
-
-        const popup = new mapboxgl.Popup({ offset: 25, closeButton: true }).setHTML(popupHtml);
-
-        const marker = new mapboxgl.Marker({ draggable: false })
-          .setLngLat(coordinates as [number, number])
-          .setPopup(popup)
-          .addTo(map);
-
-        markersRef.current.push(marker);
-      });
-    } else {
-      // Clear any existing markers when demographics is enabled
-      markersRef.current.forEach((m) => m.remove());
-      markersRef.current = [];
-    }
 
     // Add heatmap if demographics enabled
     if (showDemographics) {
@@ -507,7 +478,8 @@ export default function AudienceMap({
           location,
           match_score,
           links,
-          coordinates
+          coordinates,
+          explanation: vc.explanation
         };
 
         // Create a custom VC marker element (different color to distinguish from audience)
@@ -518,15 +490,18 @@ export default function AudienceMap({
             width: 30px;
             height: 30px;
             border-radius: 50%;
-            border: 2px solid white;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
           `;
-        el.innerHTML = "💰";
+        el.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="1" x2="12" y2="23"></line>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+          </svg>
+        `;
 
         const marker = new mapboxgl.Marker({ element: el, draggable: false })
           .setLngLat([coordinates.longitude, coordinates.latitude])
@@ -575,7 +550,8 @@ export default function AudienceMap({
           date_founded,
           threat_score,
           links,
-          coordinates
+          coordinates,
+          explanation: competitor.explanation
         };
 
         // Create a custom competitor marker element (red color to distinguish)
@@ -586,15 +562,19 @@ export default function AudienceMap({
             width: 30px;
             height: 30px;
             border-radius: 50%;
-            border: 2px solid white;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
           `;
-        el.innerHTML = "⚔️";
+        el.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.29 7 12 12 20.71 7"></polyline>
+            <line x1="12" y1="22" x2="12" y2="12"></line>
+          </svg>
+        `;
 
         const marker = new mapboxgl.Marker({ element: el, draggable: false })
           .setLngLat([coordinates.longitude, coordinates.latitude])
@@ -643,7 +623,8 @@ export default function AudienceMap({
           location,
           match_score,
           links,
-          coordinates
+          coordinates,
+          explanation: cofounder.explanation
         };
 
         // Create a custom cofounder marker element (purple color to distinguish)
@@ -654,15 +635,20 @@ export default function AudienceMap({
             width: 30px;
             height: 30px;
             border-radius: 50%;
-            border: 2px solid white;
             box-shadow: 0 2px 4px rgba(0,0,0,0.3);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
           `;
-        el.innerHTML = "🤝";
+        el.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        `;
 
         const marker = new mapboxgl.Marker({ element: el, draggable: false })
           .setLngLat([coordinates.longitude, coordinates.latitude])
@@ -711,7 +697,10 @@ export default function AudienceMap({
       // Add heatmap layer
       addHeatmapLayer();
     } else {
+      // When demographics is disabled, remove heatmap and clear all markers
       removeHeatmapLayer();
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
     }
   }, [showDemographics, heatmapData, addHeatmapLayer, removeHeatmapLayer]);
 

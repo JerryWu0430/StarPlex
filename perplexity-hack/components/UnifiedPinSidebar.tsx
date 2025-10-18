@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { X, ExternalLink, MapPin, Building2, Users, TrendingUp, Calendar, Star, AlertTriangle, Link as LinkIcon } from "lucide-react";
 import { MarketAnalysisChart } from "./MarketAnalysisChart";
 import { useStartup } from "@/contexts/StartupContext";
+import { X, ExternalLink, MapPin, Building2, Users, TrendingUp, Calendar, Star, AlertTriangle, Link as LinkIcon, BarChart3, DollarSign, Brain, Target, Search } from "lucide-react";
+
 
 // Types for different pin data
 interface VCPinData {
@@ -16,6 +17,11 @@ interface VCPinData {
   coordinates: {
     latitude: number;
     longitude: number;
+  };
+  explanation?: {
+    recent_investments: string[];
+    investment_thesis: string[];
+    how_to_pitch: string[];
   };
 }
 
@@ -30,6 +36,11 @@ interface CompetitorPinData {
     latitude: number;
     longitude: number;
   };
+  explanation?: {
+    angle: string[];
+    what_they_cover: string[];
+    gaps: string[];
+  };
 }
 
 interface CofounderPinData {
@@ -41,6 +52,11 @@ interface CofounderPinData {
   coordinates: {
     latitude: number;
     longitude: number;
+  };
+  explanation?: {
+    why_good_match: string[];
+    expertise: string[];
+    unique_value: string[];
   };
 }
 
@@ -54,6 +70,12 @@ interface AudiencePinData {
   coordinates: {
     latitude: number;
     longitude: number;
+  };
+  marketStats?: {
+    marketCap: number;
+    aiProofScore: number;
+    trendData: Array<{ period: string; value: number }>;
+    industryKeywords: string[];
   };
 }
 
@@ -84,6 +106,22 @@ const getLinkInfo = (url: string) => {
   if (url.includes('techcrunch')) return { icon: '📰', label: 'TechCrunch' };
   if (url.includes('producthunt')) return { icon: '🚀', label: 'Product Hunt' };
   return { icon: '🔗', label: 'Website' };
+};
+
+// Helper function to generate Perplexity search query from pin data
+const generatePerplexityQuery = (pinData: PinData): string => {
+  switch (pinData.type) {
+    case 'vc':
+      return `${pinData.name} ${pinData.firm} venture capital investment thesis portfolio companies`;
+    case 'competitor':
+      return `${pinData.company_name} company business model products services market position`;
+    case 'cofounder':
+      return `${pinData.name} background expertise experience startups`;
+    case 'audience':
+      return `${pinData.name} demographics market analysis customer profile`;
+    default:
+      return '';
+  }
 };
 
 // Component for rendering links with sleek styling
@@ -125,6 +163,31 @@ const LinkDisplay: React.FC<{ links: string[] }> = ({ links }) => {
   );
 };
 
+// Component for rendering explanation sections with icons and headers
+const ExplanationSection: React.FC<{
+  title: string;
+  items: string[];
+  icon: React.ReactNode;
+}> = ({ title, items, icon }) => {
+  if (!items || items.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+        {icon}
+        <span>{title}</span>
+      </div>
+      <ul className="space-y-1.5">
+        {items.map((item, idx) => (
+          <li key={idx} className="text-sm text-gray-400 pl-4 relative before:content-['•'] before:absolute before:left-0 before:text-blue-400">
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};
+
 // Component for rendering score with visual indicator
 const ScoreDisplay: React.FC<{ score: number; maxScore?: number; label: string; type: 'positive' | 'negative' }> = ({
   score,
@@ -158,6 +221,146 @@ const ScoreDisplay: React.FC<{ score: number; maxScore?: number; label: string; 
   );
 };
 
+// Utility function to transform API response to market stats format
+export const transformMarketAnalysisToStats = (marketAnalysis: any) => {
+  if (!marketAnalysis) return null;
+
+  const comprehensive = marketAnalysis.comprehensive_analysis || {};
+  const trendsData = marketAnalysis.google_trends_data?.trends_data || [];
+
+  // Transform trend data to the format expected by StatisticsSection
+  const trendData = trendsData.map((item: any) => ({
+    period: `${item.year}`,
+    value: Object.values(item).find(val => typeof val === 'number') as number || 0
+  })).slice(-10); // Get last 10 data points
+
+  return {
+    marketCap: comprehensive.market_cap_estimation || 0,
+    aiProofScore: comprehensive.how_AI_proof_it_is || 5,
+    trendData: trendData,
+    industryKeywords: marketAnalysis.industry_keywords_extracted || []
+  };
+};
+
+// Sample data for demonstration
+export const sampleMarketStats = {
+  marketCap: 2500000000, // $2.5B
+  aiProofScore: 7,
+  trendData: [
+    { period: "2020", value: 45 },
+    { period: "2021", value: 52 },
+    { period: "2022", value: 58 },
+    { period: "2023", value: 67 },
+    { period: "2024", value: 78 }
+  ],
+  industryKeywords: ["healthcare", "medical", "health", "pharma", "biotech"]
+};
+
+// Component for displaying market statistics
+const StatisticsSection: React.FC<{ marketStats: any }> = ({ marketStats }) => {
+  if (!marketStats) return null;
+
+  const formatMarketCap = (value: number) => {
+    if (value >= 1e9) return `$${(value / 1e9).toFixed(1)}B`;
+    if (value >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
+    if (value >= 1e3) return `$${(value / 1e3).toFixed(1)}K`;
+    return `$${value.toFixed(0)}`;
+  };
+
+  const getAIProofColor = (score: number) => {
+    if (score >= 8) return 'text-green-400';
+    if (score >= 6) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
+  const getAIProofLabel = (score: number) => {
+    if (score >= 8) return 'AI Resilient';
+    if (score >= 6) return 'Moderate Risk';
+    return 'High AI Risk';
+  };
+
+  return (
+    <div className="space-y-4 pt-4 border-t border-gray-700/50">
+      <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+        <BarChart3 className="w-4 h-4" />
+        <span>Market Statistics</span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {/* Market Cap */}
+        <div className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/30">
+          <div className="flex items-center gap-2 mb-2">
+            <DollarSign className="w-4 h-4 text-green-400" />
+            <span className="text-xs font-medium text-gray-300">Market Size</span>
+          </div>
+          <div className="text-lg font-bold text-green-400">
+            {formatMarketCap(marketStats.marketCap)}
+          </div>
+          <div className="text-xs text-gray-400">TAM</div>
+        </div>
+
+        {/* AI Proof Score */}
+        <div className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Brain className="w-4 h-4 text-blue-400" />
+            <span className="text-xs font-medium text-gray-300">AI Risk</span>
+          </div>
+          <div className={`text-lg font-bold ${getAIProofColor(marketStats.aiProofScore)}`}>
+            {marketStats.aiProofScore}/10
+          </div>
+          <div className="text-xs text-gray-400">{getAIProofLabel(marketStats.aiProofScore)}</div>
+        </div>
+      </div>
+
+      {/* Trend Chart */}
+      {marketStats.trendData && marketStats.trendData.length > 0 && (
+        <div className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/30">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="w-4 h-4 text-purple-400" />
+            <span className="text-xs font-medium text-gray-300">Market Trends</span>
+          </div>
+          <div className="space-y-2">
+            {marketStats.trendData.slice(-3).map((point: any, index: number) => (
+              <div key={index} className="flex items-center justify-between">
+                <span className="text-xs text-gray-400">{point.period}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-purple-400 transition-all duration-500"
+                      style={{ width: `${Math.min((point.value / 100) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-medium text-purple-400">{point.value}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Industry Keywords */}
+      {marketStats.industryKeywords && marketStats.industryKeywords.length > 0 && (
+        <div className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Target className="w-4 h-4 text-orange-400" />
+            <span className="text-xs font-medium text-gray-300">Industry Focus</span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {marketStats.industryKeywords.slice(0, 4).map((keyword: string, index: number) => (
+              <span
+                key={index}
+                className="px-2 py-1 text-xs bg-orange-500/20 text-orange-300 rounded-full border border-orange-500/30"
+              >
+                {keyword}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Component for rendering pin type specific content
 const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
   switch (pinData.type) {
@@ -187,6 +390,27 @@ const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
             label="Match Score"
             type="positive"
           />
+
+          {/* Explanation Sections */}
+          {pinData.explanation && (
+            <div className="space-y-4 pt-2 border-t border-gray-700/50">
+              <ExplanationSection
+                title="Recent Investments"
+                items={pinData.explanation.recent_investments}
+                icon={<TrendingUp className="w-4 h-4" />}
+              />
+              <ExplanationSection
+                title="Investment Thesis"
+                items={pinData.explanation.investment_thesis}
+                icon={<Star className="w-4 h-4" />}
+              />
+              <ExplanationSection
+                title="How to Pitch"
+                items={pinData.explanation.how_to_pitch}
+                icon={<Building2 className="w-4 h-4" />}
+              />
+            </div>
+          )}
 
           {/* Links */}
           <LinkDisplay links={pinData.links} />
@@ -226,6 +450,27 @@ const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
             type="negative"
           />
 
+          {/* Explanation Sections */}
+          {pinData.explanation && (
+            <div className="space-y-4 pt-2 border-t border-gray-700/50">
+              <ExplanationSection
+                title="Their Angle"
+                items={pinData.explanation.angle}
+                icon={<TrendingUp className="w-4 h-4" />}
+              />
+              <ExplanationSection
+                title="What They Cover"
+                items={pinData.explanation.what_they_cover}
+                icon={<Building2 className="w-4 h-4" />}
+              />
+              <ExplanationSection
+                title="Gaps & Opportunities"
+                items={pinData.explanation.gaps}
+                icon={<AlertTriangle className="w-4 h-4" />}
+              />
+            </div>
+          )}
+
           {/* Links */}
           <LinkDisplay links={pinData.links} />
         </div>
@@ -257,6 +502,27 @@ const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
             label="Match Score"
             type="positive"
           />
+
+          {/* Explanation Sections */}
+          {pinData.explanation && (
+            <div className="space-y-4 pt-2 border-t border-gray-700/50">
+              <ExplanationSection
+                title="Why It's a Good Match"
+                items={pinData.explanation.why_good_match}
+                icon={<Star className="w-4 h-4" />}
+              />
+              <ExplanationSection
+                title="Their Expertise"
+                items={pinData.explanation.expertise}
+                icon={<Users className="w-4 h-4" />}
+              />
+              <ExplanationSection
+                title="Their Unique Value"
+                items={pinData.explanation.unique_value}
+                icon={<TrendingUp className="w-4 h-4" />}
+              />
+            </div>
+          )}
 
           {/* Links */}
           <LinkDisplay links={pinData.links} />
@@ -306,6 +572,11 @@ const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
               {pinData.weight}
             </span>
           </div>
+
+          {/* Market Statistics */}
+          {pinData.marketStats && (
+            <StatisticsSection marketStats={pinData.marketStats} />
+          )}
         </div>
       );
 
@@ -346,6 +617,24 @@ export default function UnifiedPinSidebar({
   const [isPinned, setIsPinned] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
+  // Handle Escape key to close sidebar
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isVisible) {
+        onClose();
+        setIsPinned(false);
+      }
+    };
+
+    if (isVisible) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isVisible, onClose]);
+
   // Handle click to pin/unpin
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -357,6 +646,15 @@ export default function UnifiedPinSidebar({
     e.stopPropagation();
     onClose();
     setIsPinned(false);
+  };
+
+  // Handle Perplexity search
+  const handlePerplexitySearch = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!pinData) return;
+    const query = generatePerplexityQuery(pinData);
+    const searchUrl = `https://www.perplexity.ai/search?q=${encodeURIComponent(query)}`;
+    window.open(searchUrl, '_blank', 'noopener,noreferrer');
   };
 
   const positionClasses = position === "left" ? "left-4" : "right-4";
@@ -407,13 +705,45 @@ export default function UnifiedPinSidebar({
                   pinData.type === 'cofounder' ? 'Cofounder' : 'Audience'}
             </h3>
           </div>
-          <button
-            onClick={handleClose}
-            className="p-1 rounded-full hover:bg-black/50 transition-colors"
-            aria-label="Close sidebar"
-          >
-            <X className="w-4 h-4 text-gray-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handlePerplexitySearch}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all group ${pinData.type === 'vc'
+                ? 'bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 hover:border-green-500/60'
+                : pinData.type === 'competitor'
+                  ? 'bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 hover:border-red-500/60'
+                  : pinData.type === 'cofounder'
+                    ? 'bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 hover:border-purple-500/60'
+                    : 'bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 hover:border-blue-500/60'
+                }`}
+              aria-label="Search in Perplexity"
+              title="Deep dive in Perplexity"
+            >
+              <Search className={`w-3.5 h-3.5 ${pinData.type === 'vc'
+                ? 'text-green-400 group-hover:text-green-300'
+                : pinData.type === 'competitor'
+                  ? 'text-red-400 group-hover:text-red-300'
+                  : pinData.type === 'cofounder'
+                    ? 'text-purple-400 group-hover:text-purple-300'
+                    : 'text-blue-400 group-hover:text-blue-300'
+                }`} />
+              <span className={`text-xs font-medium ${pinData.type === 'vc'
+                ? 'text-green-300 group-hover:text-green-200'
+                : pinData.type === 'competitor'
+                  ? 'text-red-300 group-hover:text-red-200'
+                  : pinData.type === 'cofounder'
+                    ? 'text-purple-300 group-hover:text-purple-200'
+                    : 'text-blue-300 group-hover:text-blue-200'
+                }`}>Perplexity</span>
+            </button>
+            <button
+              onClick={handleClose}
+              className="p-1 rounded-full hover:bg-black/50 transition-colors"
+              aria-label="Close sidebar"
+            >
+              <X className="w-4 h-4 text-gray-400" />
+            </button>
+          </div>
         </div>
 
         {/* Content area */}
@@ -422,19 +752,7 @@ export default function UnifiedPinSidebar({
           <MarketAnalysisSection pinData={pinData} />
         </div>
 
-        {/* Footer indicator */}
-        <div className="p-2 border-t border-gray-700/50 bg-gray-700/30">
-          <div className="flex items-center justify-center">
-            <div className={`
-              w-2 h-2 rounded-full
-              ${isPinned ? "bg-blue-500" : "bg-gray-500"}
-              transition-colors duration-200
-            `} />
-            <span className="ml-2 text-xs text-gray-400">
-              {isPinned ? "Pinned" : "Hover to expand"}
-            </span>
-          </div>
-        </div>
+        {/* Footer indicator - removed as it's not needed */}
       </div>
     </div>
   );

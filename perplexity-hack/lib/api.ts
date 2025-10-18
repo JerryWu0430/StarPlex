@@ -90,6 +90,17 @@ export interface CofounderResponse {
   summary: any;
 }
 
+export interface ChatMessage {
+  role: string;
+  content: string;
+}
+
+export interface ChatResponse {
+  success: boolean;
+  response: string;
+  conversation_history: ChatMessage[];
+}
+
 export async function findCompetitors(idea: string, maxResults: number = 20): Promise<CompetitorResponse> {
   return fetchWithRetry(async () => {
     const response = await fetch(`${API_BASE_URL}/find-competitors`, {
@@ -278,6 +289,18 @@ export async function getComprehensiveMarketAnalysis(
 ): Promise<ComprehensiveMarketAnalysisResponse> {
   return fetchWithRetry(async () => {
     const response = await fetch(`${API_BASE_URL}/comprehensive-market-analysis`, {
+export async function sendChatMessage(
+  businessIdea: string,
+  message: string,
+  context?: {
+    vcs?: any[];
+    cofounders?: any[];
+    competitors?: any[];
+    demographics?: any;
+  }
+): Promise<ChatResponse> {
+  return fetchWithRetry(async () => {
+    const response = await fetch(`${API_BASE_URL}/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -285,12 +308,18 @@ export async function getComprehensiveMarketAnalysis(
       body: JSON.stringify({
         user_prompt: userPrompt,
         region: region,
+        business_idea: businessIdea,
+        message: message,
+        vcs: context?.vcs,
+        cofounders: context?.cofounders,
+        competitors: context?.competitors,
+        demographics: context?.demographics,
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: response.statusText }));
-      throw new Error(`Failed to get comprehensive market analysis: ${errorData.detail || response.statusText}`);
+      throw new Error(`Failed to send chat message: ${errorData.detail || response.statusText}`);
     }
 
     return response.json();

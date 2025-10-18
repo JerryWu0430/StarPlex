@@ -29,13 +29,17 @@ async def query_perplexity(client, prompt: str):
                 "role": "system",
                 "content": """You are a precise research assistant that returns structured data about real people.
 CRITICAL: Return ONLY valid JSON. Do not include any explanatory text before or after the JSON.
-Format: [{"name": "First Last", "location": "City, Country", "links": ["url1", "url2"], "match_score": 8}]
+Format: [{"name": "First Last", "location": "City, Country", "links": ["url1", "url2"], "match_score": 8, "explanation": {"why_good_match": ["bullet1", "bullet2"], "expertise": ["bullet1", "bullet2"], "unique_value": ["bullet1", "bullet2"]}}]
 IMPORTANT: 
 - location MUST be in "City, Country" format (e.g., "San Francisco, USA" or "London, UK")
 - Do NOT include entries if you cannot determine both the city AND country
 - match_score: Rate 1-10 how good of a cofounder match this person is for the domain
   * Consider: relevance to domain, experience level, location quality, profile completeness
   * 1-3: Weak match, 4-6: Decent match, 7-8: Strong match, 9-10: Excellent match
+- explanation: Object with 3 sections, each containing 1-3 bullet points:
+  * why_good_match: Why they would be a good cofounder match for this domain
+  * expertise: Their relevant experience and skills
+  * unique_value: What unique value they bring to the partnership
 - Only include real individual people with real names, not companies or teams."""
             },
             {
@@ -51,34 +55,35 @@ async def find_cofounders_comprehensive(domain: str):
     
     queries = [
         f"""Find 8 real individual founders/CEOs in {domain}. Return ONLY a JSON array with this exact format:
-[{{"name": "Full Name", "location": "City, Country", "links": ["profile_url1", "profile_url2"], "match_score": 8}}]
+[{{"name": "Full Name", "location": "City, Country", "links": ["profile_url1", "profile_url2"], "match_score": 8, "explanation": {{"why_good_match": ["bullet1", "bullet2"], "expertise": ["bullet1", "bullet2"], "unique_value": ["bullet1", "bullet2"]}}}}]
 
 CRITICAL Requirements:
 - name: Real person's first and last name (not company name, not "Team Page", not city names)
 - location: MUST be "City, Country" format (e.g., "San Francisco, USA"). Do NOT include if you don't know both city AND country.
 - links: At least 1 URL (LinkedIn, Twitter, Crunchbase, company site, article about them, etc.)
 - match_score: 1-10 rating of how good a cofounder match they are for {domain} (consider experience, relevance, location)
+- explanation: Object with why_good_match, expertise, and unique_value arrays (1-3 bullets each)
 Only include verified real people with known city and country.""",
 
         f"""Find 8 technical founders (CTOs/engineers) in {domain}. Return ONLY JSON:
-[{{"name": "Full Name", "location": "City, Country", "links": ["url1", "url2"], "match_score": 7}}]
-Location MUST be "City, Country" format. Include match_score 1-10 for {domain}. Skip entries without both city and country.""",
+[{{"name": "Full Name", "location": "City, Country", "links": ["url1", "url2"], "match_score": 7, "explanation": {{"why_good_match": ["bullet1", "bullet2"], "expertise": ["bullet1", "bullet2"], "unique_value": ["bullet1", "bullet2"]}}}}]
+Location MUST be "City, Country" format. Include match_score 1-10 for {domain}. Include explanation object. Skip entries without both city and country.""",
 
         f"""Search Y Combinator and TechCrunch for {domain} founders. Return ONLY JSON:
-[{{"name": "Full Name", "location": "City, Country", "links": ["url1"], "match_score": 9}}]
-Real people only. Include match_score 1-10 for {domain}. Location must include both city and country.""",
+[{{"name": "Full Name", "location": "City, Country", "links": ["url1"], "match_score": 9, "explanation": {{"why_good_match": ["bullet1", "bullet2"], "expertise": ["bullet1", "bullet2"], "unique_value": ["bullet1", "bullet2"]}}}}]
+Real people only. Include match_score 1-10 for {domain}. Include explanation object. Location must include both city and country.""",
 
         f"""Find entrepreneurs in {domain} who could be cofounders. Return ONLY JSON:
-[{{"name": "Full Name", "location": "City, Country", "links": ["url1"], "match_score": 7}}]
-Individual people with "City, Country" location format. Include match_score 1-10.""",
+[{{"name": "Full Name", "location": "City, Country", "links": ["url1"], "match_score": 7, "explanation": {{"why_good_match": ["bullet1", "bullet2"], "expertise": ["bullet1", "bullet2"], "unique_value": ["bullet1", "bullet2"]}}}}]
+Individual people with "City, Country" location format. Include match_score 1-10 and explanation object.""",
 
         f"""Find {domain} founders on Crunchbase or AngelList. Return ONLY JSON:
-[{{"name": "Full Name", "location": "City, Country", "links": ["url1"], "match_score": 8}}]
-Real people with verified links. Include match_score 1-10 for {domain}. Location: "City, Country" format only.""",
+[{{"name": "Full Name", "location": "City, Country", "links": ["url1"], "match_score": 8, "explanation": {{"why_good_match": ["bullet1", "bullet2"], "expertise": ["bullet1", "bullet2"], "unique_value": ["bullet1", "bullet2"]}}}}]
+Real people with verified links. Include match_score 1-10 for {domain} and explanation object. Location: "City, Country" format only.""",
 
         f"""Find thought leaders and builders in {domain}. Return ONLY JSON:
-[{{"name": "Full Name", "location": "City, Country", "links": ["url1"], "match_score": 6}}]
-Individual people with "City, Country" location. Include match_score 1-10 for {domain}. Skip if location incomplete."""
+[{{"name": "Full Name", "location": "City, Country", "links": ["url1"], "match_score": 6, "explanation": {{"why_good_match": ["bullet1", "bullet2"], "expertise": ["bullet1", "bullet2"], "unique_value": ["bullet1", "bullet2"]}}}}]
+Individual people with "City, Country" location. Include match_score 1-10 for {domain} and explanation object. Skip if location incomplete."""
     ]
     
     async with AsyncPerplexity() as client:

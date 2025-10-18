@@ -21,6 +21,8 @@ from comprehensive_market_analyzer import analyze_market_comprehensive_api
 from competitors import find_competitors_api
 # Import pitch deck generator function
 from pitch_deck import generate_pitch_deck_api
+# Import chatbot assistant
+from chatbot import chat_with_assistant
 
 # Load environment variables
 load_dotenv()
@@ -56,12 +58,18 @@ class Coordinates(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 
+class FounderExplanation(BaseModel):
+    why_good_match: Optional[List[str]] = []
+    expertise: Optional[List[str]] = []
+    unique_value: Optional[List[str]] = []
+
 class Founder(BaseModel):
     name: str
     location: str
     links: List[str]
     coordinates: Optional[Coordinates] = None
     match_score: int
+    explanation: Optional[FounderExplanation] = None
 
 class CofounderResponse(BaseModel):
     success: bool
@@ -77,6 +85,11 @@ class VCRequest(BaseModel):
     max_results: Optional[int] = 20
     include_coordinates: Optional[bool] = True
 
+class VCExplanation(BaseModel):
+    recent_investments: Optional[List[str]] = []
+    investment_thesis: Optional[List[str]] = []
+    how_to_pitch: Optional[List[str]] = []
+
 class VC(BaseModel):
     name: str
     firm: str
@@ -84,6 +97,7 @@ class VC(BaseModel):
     links: List[str]
     coordinates: Optional[Coordinates] = None
     match_score: int
+    explanation: Optional[VCExplanation] = None
 
 class VCResponse(BaseModel):
     success: bool
@@ -100,6 +114,11 @@ class CompetitorRequest(BaseModel):
     max_results: Optional[int] = 20
     include_coordinates: Optional[bool] = True
 
+class CompetitorExplanation(BaseModel):
+    angle: Optional[List[str]] = []
+    what_they_cover: Optional[List[str]] = []
+    gaps: Optional[List[str]] = []
+
 class Competitor(BaseModel):
     company_name: str
     location: str
@@ -107,6 +126,7 @@ class Competitor(BaseModel):
     date_founded: str
     coordinates: Optional[Coordinates] = None
     threat_score: int
+    explanation: Optional[CompetitorExplanation] = None
 
 class CompetitorResponse(BaseModel):
     success: bool
@@ -137,6 +157,24 @@ class PitchDeckResponse(BaseModel):
     pptx_file: Optional[str] = None
     timestamp: str
 
+# Pydantic models for chatbot endpoint
+class ChatRequest(BaseModel):
+    business_idea: str
+    message: str
+    vcs: Optional[List[Dict]] = None
+    cofounders: Optional[List[Dict]] = None
+    competitors: Optional[List[Dict]] = None
+    demographics: Optional[Dict] = None
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatResponse(BaseModel):
+    success: bool
+    response: str
+    conversation_history: List[ChatMessage]
+
 @app.get("/")
 async def root():
     return {
@@ -148,7 +186,8 @@ async def root():
             "/find-vcs": "Find venture capitalists and investors for your startup",
             "/find-competitors": "Find competing companies in your market space",
             "/comprehensive-market-analysis": "Comprehensive market analysis with search trends and detailed insights",
-            "/generate-pitch-deck": "Generate investor pitch deck for your startup idea"
+            "/generate-pitch-deck": "Generate investor pitch deck for your startup idea",
+            "/chat": "Chat with AI assistant about your startup idea"
         }
     }
 
@@ -414,6 +453,49 @@ async def download_pitch_deck(filename: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error downloading file: {str(e)}")
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat_endpoint(request: ChatRequest):
+    """
+    Chat with AI assistant about your startup idea with market research context
+    
+    Parameters:
+    - business_idea: Your startup idea (provides context for the conversation)
+    - message: Your question or message to the assistant
+    - vcs: Optional list of VC data from market research
+    - cofounders: Optional list of cofounder data from market research
+    - competitors: Optional list of competitor data from market research
+    - demographics: Optional demographics data from market research
+    
+    Returns:
+    - JSON with AI response (markdown formatted) and conversation history
+    """
+    try:
+        business_idea = request.business_idea.strip()
+        message = request.message.strip()
+        
+        if not message:
+            raise HTTPException(status_code=400, detail="Message cannot be empty")
+        
+        result = await chat_with_assistant(
+            business_idea=business_idea,
+            message=message,
+            vcs=request.vcs,
+            cofounders=request.cofounders,
+            competitors=request.competitors,
+            demographics=request.demographics
+        )
+        
+        return ChatResponse(
+            success=True,
+            response=result["response"],
+            conversation_history=result["conversation_history"]
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing chat: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
