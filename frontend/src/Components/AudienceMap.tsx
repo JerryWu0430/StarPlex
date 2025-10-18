@@ -61,6 +61,8 @@ export default function AudienceMap({
   const markersRef = useRef<Marker[]>([]);
   const hoverCardRef = useRef<HTMLDivElement | null>(null);
   const [styleUrl, setStyleUrl] = useState<string>(initialStyle);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [loadingError, setLoadingError] = useState<string | null>(null);
 
   /** Initialize the map ONCE */
   useEffect(() => {
@@ -374,6 +376,9 @@ export default function AudienceMap({
     /** First-time data load */
     map.on("load", async () => {
       try {
+        setIsLoading(true);
+        setLoadingError(null);
+
         ensureGlobeProjection(); // make sure initial style starts as globe too
 
         // Add heatmap layers immediately (always present)
@@ -427,8 +432,12 @@ export default function AudienceMap({
 
           markersRef.current.push(marker);
         });
+
+        setIsLoading(false);
       } catch (err) {
         console.error("Error fetching audience map:", err);
+        setLoadingError(err instanceof Error ? err.message : "Failed to load heatmap data");
+        setIsLoading(false);
       }
     });
 
@@ -502,7 +511,110 @@ export default function AudienceMap({
           </button>
         </div>
       )}
+
+      {/* Loading overlay */}
+      {isLoading && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            color: "white",
+            fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          }}
+        >
+          <div
+            style={{
+              width: "50px",
+              height: "50px",
+              border: "4px solid rgba(255, 255, 255, 0.3)",
+              borderTop: "4px solid white",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              marginBottom: "20px",
+            }}
+          />
+          <div style={{ fontSize: "18px", fontWeight: "600", marginBottom: "8px" }}>
+            Loading Heatmap
+          </div>
+          <div style={{ fontSize: "14px", opacity: 0.8 }}>
+            Analyzing audience data...
+          </div>
+        </div>
+      )}
+
+      {/* Error overlay */}
+      {loadingError && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.8)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            color: "white",
+            fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            textAlign: "center",
+            padding: "20px",
+          }}
+        >
+          <div style={{ fontSize: "24px", marginBottom: "16px" }}>⚠️</div>
+          <div style={{ fontSize: "18px", fontWeight: "600", marginBottom: "8px" }}>
+            Failed to Load Heatmap
+          </div>
+          <div style={{ fontSize: "14px", opacity: 0.8, marginBottom: "20px" }}>
+            {loadingError}
+          </div>
+          <button
+            onClick={() => {
+              setLoadingError(null);
+              setIsLoading(true);
+              // Trigger a reload by re-fetching the data
+              if (mapRef.current) {
+                mapRef.current.fire('load');
+              }
+            }}
+            style={{
+              background: "white",
+              color: "black",
+              border: "none",
+              borderRadius: "6px",
+              padding: "10px 20px",
+              fontSize: "14px",
+              fontWeight: "600",
+              cursor: "pointer",
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       <div ref={containerRef} style={{ position: "absolute", inset: 0 }} />
+
+      {/* Add CSS for spinner animation */}
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
     </div>
   );
 }
