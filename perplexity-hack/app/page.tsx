@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import AppPage from "./appPage";
 import InitPage from "./initPage";
 import type { Feature, Point } from "geojson";
+import { StartupProvider, useStartup } from "@/contexts/StartupContext";
+import { useBackgroundAPI } from "@/hooks/useBackgroundAPI";
 
 type AudienceProps = {
   name: string;
@@ -18,7 +20,12 @@ type AudienceProps = {
 
 type AudienceFeature = Feature<Point, AudienceProps>;
 
-export default function Home() {
+function AppContent() {
+  const { startupIdea, setStartupIdea } = useStartup();
+  
+  // Start background API calls when startup idea is available
+  useBackgroundAPI(startupIdea);
+
   const [showApp, setShowApp] = useState(false);
   const [initialQuery, setInitialQuery] = useState("");
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -29,6 +36,7 @@ export default function Home() {
 
   const handleEnter = (value: string) => {
     setInitialQuery(value);
+    setStartupIdea(value.trim()); // Set startup idea in context to trigger background API calls
     setIsTransitioning(true);
     setTimeout(() => {
       setShowApp(true);
@@ -133,5 +141,13 @@ export default function Home() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <StartupProvider>
+      <AppContent />
+    </StartupProvider>
   );
 }

@@ -11,6 +11,7 @@ import { findCompetitors, findVCs, findCofounders, getAudienceMap, sendChatMessa
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { Feature } from "geojson";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { useStartup } from "@/contexts/StartupContext";
 
 type LoadingStatus = "competitors" | "vcs" | "cofounders" | "demographics" | null;
 type AlertType = { type: "success" | "error"; message: string } | null;
@@ -22,6 +23,8 @@ interface AppPageProps {
 }
 
 export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratingPitchDeck = false }: AppPageProps) {
+  const { startupIdea } = useStartup();
+  
   // all data is shown by default
   const [showVCs, setShowVCs] = useState(true);
   const [showCompetitors, setShowCompetitors] = useState(true);
@@ -49,7 +52,8 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
   const [isSendingChat, setIsSendingChat] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  const startupIdea = initialQuery?.trim() || "";
+  // Use startupIdea from context, fallback to initialQuery prop for backward compatibility
+  const currentStartupIdea = startupIdea || initialQuery?.trim() || "";
 
   // Helper function to add delay between API calls
   const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -69,7 +73,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
     setIsSendingChat(true);
 
     try {
-      const response = await sendChatMessage(startupIdea, userMessage.content, {
+      const response = await sendChatMessage(currentStartupIdea, userMessage.content, {
         vcs: vcsData?.vcs,
         cofounders: cofoundersData?.cofounders,
         competitors: competitorsData?.competitors,
@@ -140,7 +144,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
 
   // Fetch ALL data sequentially - one at a time with delays to avoid rate limits
   useEffect(() => {
-    if (!startupIdea || startupIdea.length < 3) {
+    if (!currentStartupIdea || currentStartupIdea.length < 3) {
       console.warn("Skipping data fetch: startup idea is empty or too short");
       return;
     }
@@ -155,8 +159,8 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
       // 1. Fetch competitors
       setCurrentLoading("competitors");
       try {
-        console.log("Fetching competitors for:", startupIdea);
-        const competitorsResult = await findCompetitors(startupIdea);
+        console.log("Fetching competitors for:", currentStartupIdea);
+        const competitorsResult = await findCompetitors(currentStartupIdea);
         setCompetitorsData(competitorsResult);
         setAlert({ type: "success", message: `Found ${competitorsResult.total_found} competitors` });
         setTimeout(() => setAlert(null), 3000);
@@ -174,8 +178,8 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
       // 2. Fetch VCs
       setCurrentLoading("vcs");
       try {
-        console.log("Fetching VCs for:", startupIdea);
-        const vcsResult = await findVCs(startupIdea);
+        console.log("Fetching VCs for:", currentStartupIdea);
+        const vcsResult = await findVCs(currentStartupIdea);
         setVCsData(vcsResult);
         setAlert({ type: "success", message: `Found ${vcsResult.total_found} VCs` });
         setTimeout(() => setAlert(null), 3000);
@@ -193,8 +197,8 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
       // 3. Fetch cofounders
       setCurrentLoading("cofounders");
       try {
-        console.log("Fetching cofounders for:", startupIdea);
-        const cofoundersResult = await findCofounders(startupIdea);
+        console.log("Fetching cofounders for:", currentStartupIdea);
+        const cofoundersResult = await findCofounders(currentStartupIdea);
         setCofoundersData(cofoundersResult);
         setAlert({ type: "success", message: `Found ${cofoundersResult.total_found} cofounders` });
         setTimeout(() => setAlert(null), 3000);
@@ -212,8 +216,8 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
       // 4. Fetch demographics
       setCurrentLoading("demographics");
       try {
-        console.log("Fetching demographics for:", startupIdea);
-        const demographicsResult = await getAudienceMap(startupIdea);
+        console.log("Fetching demographics for:", currentStartupIdea);
+        const demographicsResult = await getAudienceMap(currentStartupIdea);
         console.log("Demographics result:", demographicsResult);
         setDemographicsData(demographicsResult);
         setAlert({ type: "success", message: "Customer demographics loaded" });
@@ -228,7 +232,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
     };
 
     fetchDataSequentially();
-  }, [startupIdea]); // Re-fetch when startup idea changes
+  }, [currentStartupIdea]); // Re-fetch when startup idea changes
 
   const getLoadingMessage = () => {
     switch (currentLoading) {
