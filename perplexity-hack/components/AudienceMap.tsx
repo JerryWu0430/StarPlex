@@ -37,8 +37,8 @@ type AudienceMapProps = {
   showCompetitors?: boolean;
   showDemographics?: boolean;
   showCofounders?: boolean;
-  /** Callback for when a heatmap point is hovered */
-  onHeatmapHover?: (feature: AudienceFeature | null) => void;
+  /** Callback for when a heatmap point is clicked */
+  onHeatmapClick?: (feature: AudienceFeature | null) => void;
 };
 
 /** ---------- Styles ---------- */
@@ -68,7 +68,7 @@ export default function AudienceMap({
   showCompetitors = false,
   showDemographics = false,
   showCofounders = false,
-  onHeatmapHover,
+  onHeatmapClick,
 }: AudienceMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
@@ -139,17 +139,21 @@ export default function AudienceMap({
         },
       });
 
-      // Add hover interactions for heatmap
-      if (onHeatmapHover) {
-        map.on("mousemove", "audience-heatmap-layer", (e) => {
+      // Add cursor pointer for clickable heatmap
+      if (onHeatmapClick) {
+        map.getCanvas().style.cursor = "pointer";
+      }
+
+
+      // Add click interactions for heatmap
+      if (onHeatmapClick) {
+        map.on("click", "audience-heatmap-layer", (e) => {
+          e.preventDefault();
+          e.originalEvent.stopPropagation();
           if (e.features && e.features.length > 0) {
             const feature = e.features[0] as unknown as AudienceFeature;
-            onHeatmapHover(feature);
+            onHeatmapClick(feature);
           }
-        });
-
-        map.on("mouseleave", "audience-heatmap-layer", () => {
-          onHeatmapHover(null);
         });
       }
     }

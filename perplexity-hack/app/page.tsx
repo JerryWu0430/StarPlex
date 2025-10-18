@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AudienceMap from "@/components/AudienceMap";
 import DockAnimation from "@/components/DockAnimation";
 import InitPage from "./initPage";
@@ -30,18 +30,40 @@ export default function Home() {
   const [showCompetitors, setShowCompetitors] = useState(false);
   const [showDemographics, setShowDemographics] = useState(true);
   const [showCofounders, setShowCofounders] = useState(false);
-  const [hoveredFeature, setHoveredFeature] = useState<AudienceFeature | null>(null);
+  const [selectedFeature, setSelectedFeature] = useState<AudienceFeature | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(false);
   const [isGeneratingPitchDeck, setIsGeneratingPitchDeck] = useState(false);
 
-  const handleHeatmapHover = (feature: AudienceFeature | null) => {
-    setHoveredFeature(feature);
-    setSidebarVisible(feature !== null);
+  const handleHeatmapClick = (feature: AudienceFeature | null) => {
+    if (feature) {
+      // Clicking on a POI - show sidebar
+      setSelectedFeature(feature);
+      setSidebarVisible(true);
+    } else {
+      // Clicking on empty area - hide sidebar
+      setSelectedFeature(null);
+      setSidebarVisible(false);
+    }
   };
+
+  // Handle escape key to close sidebar
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && sidebarVisible) {
+        setSidebarVisible(false);
+        setSelectedFeature(null);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [sidebarVisible]);
 
   const handleGeneratePitchDeck = async () => {
     setIsGeneratingPitchDeck(true);
-    
+
     try {
       const response = await fetch("http://localhost:8000/generate-pitch-deck", {
         method: "POST",
@@ -59,11 +81,11 @@ export default function Home() {
 
       const data = await response.json();
       console.log("Pitch deck generated:", data);
-      
+
       // Download the PowerPoint file if available
       if (data.pptx_file) {
         const downloadUrl = `http://localhost:8000/download-pitch-deck/${data.pptx_file}`;
-        
+
         // Create a temporary anchor element to trigger download
         const link = document.createElement('a');
         link.href = downloadUrl;
@@ -118,8 +140,8 @@ export default function Home() {
                   {isGeneratingPitchDeck ? "Generating Pitch Deck..." : "Generate Pitch Deck"}
                 </div>
                 <div className="text-xs text-muted-foreground leading-normal font-normal">
-                  {isGeneratingPitchDeck 
-                    ? "AI is creating your presentation..." 
+                  {isGeneratingPitchDeck
+                    ? "AI is creating your presentation..."
                     : "Create investor-ready slides with AI"}
                 </div>
               </div>
@@ -183,66 +205,69 @@ export default function Home() {
         showCompetitors={showCompetitors}
         showDemographics={showDemographics}
         showCofounders={showCofounders}
-        onHeatmapHover={handleHeatmapHover}
+        onHeatmapClick={handleHeatmapClick}
       />
 
       {/* Floating Detail Sidebar */}
       <FloatingDetailSidebar
-        position="right"
+        position="left"
         width="400px"
         isVisible={sidebarVisible}
-        onClose={() => setSidebarVisible(false)}
+        onClose={() => {
+          setSidebarVisible(false);
+          setSelectedFeature(null);
+        }}
       >
-        {hoveredFeature && (
+        {selectedFeature && (
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">
-                {hoveredFeature.properties.name}
+              <h3 className="text-lg font-semibold text-gray-100">
+                {selectedFeature.properties.name}
               </h3>
-              {hoveredFeature.properties.display_name && (
-                <p className="text-sm text-gray-600 mt-1">
-                  {hoveredFeature.properties.display_name}
+              {selectedFeature.properties.display_name && (
+                <p className="text-sm text-gray-300 mt-1">
+                  {selectedFeature.properties.display_name}
                 </p>
               )}
             </div>
 
-            {hoveredFeature.properties.description && (
+            {selectedFeature.properties.description && (
               <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Description</h4>
-                <p className="text-sm text-gray-600">{hoveredFeature.properties.description}</p>
+                <h4 className="text-sm font-medium text-gray-200 mb-2">Description</h4>
+                <p className="text-sm text-gray-300">{selectedFeature.properties.description}</p>
               </div>
             )}
 
-            {hoveredFeature.properties.target_fit && (
+            {selectedFeature.properties.target_fit && (
               <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Target Fit</h4>
-                <p className="text-sm text-gray-600">{hoveredFeature.properties.target_fit}</p>
+                <h4 className="text-sm font-medium text-gray-200 mb-2">Target Fit</h4>
+                <p className="text-sm text-gray-300">{selectedFeature.properties.target_fit}</p>
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-4 text-sm">
-              {hoveredFeature.properties.country && (
+              {selectedFeature.properties.country && (
                 <div>
-                  <span className="font-medium text-gray-700">Country:</span>
-                  <p className="text-gray-600">{hoveredFeature.properties.country}</p>
+                  <span className="font-medium text-gray-200">Country:</span>
+                  <p className="text-gray-300">{selectedFeature.properties.country}</p>
                 </div>
               )}
-              {hoveredFeature.properties.borough && (
+              {selectedFeature.properties.borough && (
                 <div>
-                  <span className="font-medium text-gray-700">Borough:</span>
-                  <p className="text-gray-600">{hoveredFeature.properties.borough}</p>
+                  <span className="font-medium text-gray-200">Borough:</span>
+                  <p className="text-gray-300">{selectedFeature.properties.borough}</p>
                 </div>
               )}
-              {hoveredFeature.properties.area_code && (
+              {selectedFeature.properties.area_code && (
                 <div>
-                  <span className="font-medium text-gray-700">Area Code:</span>
-                  <p className="text-gray-600">{hoveredFeature.properties.area_code}</p>
+                  <span className="font-medium text-gray-200">Area Code:</span>
+                  <p className="text-gray-300">{selectedFeature.properties.area_code}</p>
                 </div>
               )}
-              {hoveredFeature.properties.weight && (
+              {selectedFeature.properties.weight && (
                 <div>
-                  <span className="font-medium text-gray-700">Weight:</span>
-                  <p className="text-gray-600">{hoveredFeature.properties.weight}</p>
+                  <span className="font-medium text-gray-200">Weight:</span>
+                  <p className="text-gray-300">{selectedFeature.properties.weight}</p>
                 </div>
               )}
             </div>

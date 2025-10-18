@@ -63,7 +63,7 @@ export default function FloatingDetailSidebar({
       ref={sidebarRef}
       className={`
         fixed top-4 ${positionClasses} z-20
-        transition-all duration-300 ease-in-out
+        transition-all duration-300 linear
         ${transformClasses}
         ${className}
       `}
@@ -72,8 +72,8 @@ export default function FloatingDetailSidebar({
     >
       <div
         className={`
-          bg-white/95 backdrop-blur-sm
-          border border-gray-200/50
+          bg-black/95 backdrop-blur-sm
+          border border-black/50
           rounded-xl shadow-lg
           overflow-hidden
           h-[calc(100vh-2rem)]
@@ -86,23 +86,23 @@ export default function FloatingDetailSidebar({
         }}
       >
         {/* Header with close button */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200/50 bg-gray-50/50">
-          <h3 className="text-sm font-semibold text-gray-700">Details</h3>
+        <div className="flex items-center justify-between p-4 border-b border-black/50 bg-black/50">
+          <h3 className="text-sm font-semibold text-white">Details</h3>
           <button
             onClick={handleClose}
-            className="p-1 rounded-full hover:bg-gray-200/50 transition-colors"
+            className="p-1 rounded-full hover:bg-black/50 transition-colors"
             aria-label="Close sidebar"
           >
-            <X className="w-4 h-4 text-gray-500" />
+            <X className="w-4 h-4 text-gray-400" />
           </button>
         </div>
 
         {/* Content area */}
         <div className="flex-1 overflow-y-auto p-4">
           {children || (
-            <div className="text-gray-500 text-sm">
+            <div className="text-gray-400 text-sm">
               <p>No content available</p>
-              <p className="text-xs mt-2 text-gray-400">
+              <p className="text-xs mt-2 text-gray-500">
                 Hover to expand • Click to pin
               </p>
             </div>
@@ -110,14 +110,14 @@ export default function FloatingDetailSidebar({
         </div>
 
         {/* Footer indicator */}
-        <div className="p-2 border-t border-gray-200/50 bg-gray-50/30">
+        <div className="p-2 border-t border-gray-700/50 bg-gray-700/30">
           <div className="flex items-center justify-center">
             <div className={`
               w-2 h-2 rounded-full
-              ${isPinned ? "bg-blue-500" : "bg-gray-300"}
+              ${isPinned ? "bg-blue-500" : "bg-gray-500"}
               transition-colors duration-200
             `} />
-            <span className="ml-2 text-xs text-gray-500">
+            <span className="ml-2 text-xs text-gray-400">
               {isPinned ? "Pinned" : "Hover to expand"}
             </span>
           </div>
