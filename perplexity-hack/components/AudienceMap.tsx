@@ -74,10 +74,10 @@ export default function AudienceMap({
   enableThemeToggle = false,
   style,
   className,
-  showVCs = false,
-  showCompetitors = false,
-  showDemographics = false,
-  showCofounders = false,
+  showVCs = true,
+  showCompetitors = true,
+  showDemographics = true,
+  showCofounders = true,
   onHeatmapClick,
 }: AudienceMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);

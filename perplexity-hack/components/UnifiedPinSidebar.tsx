@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { MarketAnalysisChart } from "./MarketAnalysisChart";
+import { useStartup } from "@/contexts/StartupContext";
 import { X, ExternalLink, MapPin, Building2, Users, TrendingUp, Calendar, Star, AlertTriangle, Link as LinkIcon, BarChart3, DollarSign, Brain, Target, Search } from "lucide-react";
+
 
 // Types for different pin data
 interface VCPinData {
@@ -582,25 +585,25 @@ const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
   }
 };
 
-// Placeholder for future graph support
-const GraphSupportPlaceholder: React.FC<{ pinType: string }> = ({ pinType }) => {
-  if (pinType === 'competitor') {
-    return (
-      <div className="mt-6 pt-4 border-t border-gray-700/50">
-        <div className="flex items-center gap-2 text-sm font-medium text-gray-300 mb-3">
-          <TrendingUp className="w-4 h-4" />
-          <span>Competitor Analysis</span>
-        </div>
-        <div className="p-3 bg-gray-800/30 rounded-lg border border-gray-700/30">
-          <p className="text-xs text-gray-400 mb-2">Graph visualization coming soon</p>
-          <div className="h-20 bg-gray-800/50 rounded flex items-center justify-center">
-            <span className="text-xs text-gray-500">📊 Interactive Graph</span>
-          </div>
-        </div>
-      </div>
-    );
+// Market analysis chart for audience pins only
+const MarketAnalysisSection: React.FC<{ 
+  pinData: PinData | null; 
+}> = ({ pinData }) => {
+  const { startupIdea } = useStartup();
+  
+  // Only show market analysis for audience pins
+  if (pinData?.type !== 'audience' || !startupIdea) {
+    return null;
   }
-  return null;
+
+  return (
+    <div className="mt-6 pt-4 border-t border-gray-700/50">
+      <MarketAnalysisChart 
+        location={pinData.location} 
+        startupIdea={startupIdea} 
+      />
+    </div>
+  );
 };
 
 export default function UnifiedPinSidebar({
@@ -746,7 +749,7 @@ export default function UnifiedPinSidebar({
         {/* Content area */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
           <PinContent pinData={pinData} />
-          <GraphSupportPlaceholder pinType={pinData.type} />
+          <MarketAnalysisSection pinData={pinData} />
         </div>
 
         {/* Footer indicator - removed as it's not needed */}
