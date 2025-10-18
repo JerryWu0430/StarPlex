@@ -185,6 +185,8 @@ async def root():
             "/find-cofounders": "Find potential cofounders for your startup idea",
             "/find-vcs": "Find venture capitalists and investors for your startup",
             "/find-competitors": "Find competing companies in your market space",
+            "/extract-keywords": "Extract industry keywords and market analysis from startup idea",
+            "/analyze-trends": "Analyze Google Trends for specific keywords and region",
             "/comprehensive-market-analysis": "Comprehensive market analysis with search trends and detailed insights",
             "/generate-pitch-deck": "Generate investor pitch deck for your startup idea",
             "/chat": "Chat with AI assistant about your startup idea"
@@ -329,6 +331,29 @@ async def find_competitors(request: CompetitorRequest):
         raise HTTPException(status_code=500, detail=f"Error finding competitors: {str(e)}")
 
 
+# Pydantic models for keyword extraction endpoint
+class KeywordExtractionRequest(BaseModel):
+    user_prompt: str
+
+class KeywordExtractionResponse(BaseModel):
+    success: bool
+    user_prompt: str
+    industry_keywords_extracted: List[str]
+    market_analysis: Optional[Dict] = None
+    timestamp: str
+
+# Pydantic models for trends analysis endpoint
+class TrendsAnalysisRequest(BaseModel):
+    keywords: List[str]
+    region: str
+
+class TrendsAnalysisResponse(BaseModel):
+    success: bool
+    region: str
+    keywords: List[str]
+    google_trends_data: Dict
+    timestamp: str
+
 # Pydantic models for comprehensive market analysis endpoint
 class ComprehensiveMarketAnalysisRequest(BaseModel):
     user_prompt: str
@@ -344,6 +369,85 @@ class ComprehensiveMarketAnalysisResponse(BaseModel):
     timestamp: str
     analysis_type: str
 
+
+@app.post("/extract-keywords", response_model=KeywordExtractionResponse)
+async def extract_keywords(request: KeywordExtractionRequest):
+    """
+    Extract industry keywords from startup idea using Perplexity
+    
+    Parameters:
+    - user_prompt: Your startup idea (e.g., "I am making a healthcare startup")
+    
+    Returns:
+    - JSON with extracted industry keywords and market analysis for Google Trends analysis
+    """
+    try:
+        if not request.user_prompt.strip():
+            raise HTTPException(status_code=400, detail="user_prompt cannot be empty")
+        
+        # Import the analyzer
+        from comprehensive_market_analyzer import ComprehensiveMarketAnalyzer
+        
+        # Extract keywords and get market analysis
+        analyzer = ComprehensiveMarketAnalyzer()
+        async with analyzer:
+            keywords = await analyzer.extract_industry_keywords(request.user_prompt)
+            
+            # Get market analysis (AI-proof score and market cap) - done once per industry
+            market_analysis = await analyzer.get_comprehensive_market_analysis(
+                request.user_prompt, 
+                [],  # Empty trends data for initial analysis
+                keywords
+            )
+        
+        return KeywordExtractionResponse(
+            success=True,
+            user_prompt=request.user_prompt,
+            industry_keywords_extracted=keywords,
+            market_analysis=market_analysis,
+            timestamp=datetime.now().isoformat()
+        )
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error extracting keywords: {str(e)}")
+
+@app.post("/analyze-trends", response_model=TrendsAnalysisResponse)
+async def analyze_trends(request: TrendsAnalysisRequest):
+    """
+    Analyze Google Trends for specific keywords and region
+    
+    Parameters:
+    - keywords: List of industry keywords to analyze
+    - region: Region code (e.g., "US", "UK", "CA")
+    
+    Returns:
+    - JSON with Google Trends data for the specified keywords and region
+    """
+    try:
+        if not request.keywords or len(request.keywords) == 0:
+            raise HTTPException(status_code=400, detail="keywords cannot be empty")
+        
+        if not request.region.strip():
+            raise HTTPException(status_code=400, detail="region cannot be empty")
+        
+        # Import the analyzer
+        from comprehensive_market_analyzer import ComprehensiveMarketAnalyzer
+        
+        # Get trends data only (fast Google Trends API call)
+        analyzer = ComprehensiveMarketAnalyzer()
+        async with analyzer:
+            trends_result = analyzer.get_google_trends_data(request.keywords, request.region)
+        
+        return TrendsAnalysisResponse(
+            success=True,
+            region=request.region,
+            keywords=request.keywords,
+            google_trends_data=trends_result,
+            timestamp=datetime.now().isoformat()
+        )
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error analyzing trends: {str(e)}")
 
 @app.post("/comprehensive-market-analysis", response_model=ComprehensiveMarketAnalysisResponse)
 async def comprehensive_market_analysis(request: ComprehensiveMarketAnalysisRequest):

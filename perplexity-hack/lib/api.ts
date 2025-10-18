@@ -289,6 +289,25 @@ export async function getComprehensiveMarketAnalysis(
 ): Promise<ComprehensiveMarketAnalysisResponse> {
   return fetchWithRetry(async () => {
     const response = await fetch(`${API_BASE_URL}/comprehensive-market-analysis`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        user_prompt: userPrompt,
+        region: region,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(`Failed to get comprehensive market analysis: ${errorData.detail || response.statusText}`);
+    }
+
+    return response.json();
+  });
+}
+
 export async function sendChatMessage(
   businessIdea: string,
   message: string,
@@ -306,8 +325,6 @@ export async function sendChatMessage(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        user_prompt: userPrompt,
-        region: region,
         business_idea: businessIdea,
         message: message,
         vcs: context?.vcs,
