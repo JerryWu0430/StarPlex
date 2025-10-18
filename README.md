@@ -138,7 +138,7 @@ All geographic data, market insights, competitor intelligence, and demographic a
 - **Frontend**: Next.js, React 19, TypeScript, TailwindCSS
 - **Backend**: Python, FastAPI
 - **AI Engine**: Perplexity Sonar Pro
-- **Mapping & Geospatial**: Mapbox GL (interactive maps), OpenStreetMap Nominatim API (geocoding)
+- **Mapping & Geospatial**: Mapbox GL (interactive maps)
 - **Data Visualization & Graphing**: 
   - MapBox (3D interactive globe)
   - Recharts (Market growth charts, trend analysis, pie charts, radar charts)
