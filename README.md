@@ -33,7 +33,7 @@ StarPlex features an interactive **3D globe interface** as its main UI. Simply e
 
 1. Navigate to the frontend directory:
 ```bash
-cd perplexity-hack
+cd frontend
 ```
 
 2. Install dependencies:
