@@ -1,21 +1,35 @@
-from geopy.geocoders import Nominatim
-from geopy.extra.rate_limiter import RateLimiter
 from urllib.parse import quote
 from typing import Optional, Dict, List
 import asyncio
 import logging
+import aiohttp
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
+# Mapbox API token
+MAPBOX_TOKEN = os.getenv("MAPBOX_TOKEN", "")
+
 class InternationalGeocoder:
     def __init__(self):
-        # Initialize Nominatim with proper user agent
-        self.geolocator = Nominatim(user_agent="StartupSonar-Geocoding/1.0")
-        # Add rate limiting to respect Nominatim's terms of service
-        self.geocode = RateLimiter(self.geolocator.geocode, min_delay_seconds=1.1)
         # Simple in-memory cache
         self._cache = {}
+        self._session = None
+
+    async def _get_session(self):
+        """Get or create aiohttp session"""
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession()
+        return self._session
+    
+    async def close(self):
+        """Close the aiohttp session"""
+        if self._session and not self._session.closed:
+            await self._session.close()
 
     def _simplify_query(self, location_query: str) -> str:
         """Simplify location query to improve geocoding success"""
@@ -49,59 +63,68 @@ class InternationalGeocoder:
         return alternatives
 
     async def geocode_location(self, location_query: str, country_code: str = None) -> Dict:
-        """Geocode any location worldwide using Nominatim with rate limiting"""
+        """Geocode any location worldwide using Mapbox - FAST!"""
         # Check cache first
         cache_key = f"{location_query}:{country_code or 'None'}"
         if cache_key in self._cache:
             return self._cache[cache_key]
         
+        if not MAPBOX_TOKEN:
+            logger.warning(f"No Mapbox token found, returning fallback for '{location_query}'")
+            fallback_result = self._get_fallback_coordinates(country_code)
+            self._cache[cache_key] = fallback_result
+            return fallback_result
+        
         # Get alternative queries to try
         alternative_queries = self._get_alternative_queries(location_query)
+        
+        session = await self._get_session()
         
         try:
             for query_variant in alternative_queries:
                 try:
-                    # URL encode the query to handle special characters
-                    encoded_query = quote(query_variant)
+                    # Mapbox Geocoding API endpoint
+                    url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{quote(query_variant)}.json"
+                    params = {
+                        "access_token": MAPBOX_TOKEN,
+                        "limit": 1
+                    }
                     
-                    # Use the rate-limited geocoder
-                    location = await asyncio.get_event_loop().run_in_executor(
-                        None, self.geocode, query_variant
-                    )
-                    
-                    if location:
-                        # Parse the result
-                        geocoded_result = {
-                            "lat": location.latitude,
-                            "lng": location.longitude,
-                            "display_name": location.address,
-                            "address": location.raw.get("address", {}),
-                            "success": True,
-                            "bbox": None,  # Will be populated if available
-                            "boundingbox": location.raw.get("boundingbox", []),
-                            "place_id": location.raw.get("place_id"),
-                            "osm_type": location.raw.get("osm_type"),
-                            "osm_id": location.raw.get("osm_id"),
-                            "importance": location.raw.get("importance"),
-                            "class": location.raw.get("class"),
-                            "type": location.raw.get("type")
-                        }
-                        
-                        # Parse bounding box if available
-                        if "boundingbox" in location.raw:
-                            bbox_list = location.raw["boundingbox"]
-                            if len(bbox_list) == 4:
-                                geocoded_result["bbox"] = {
-                                    "min_lat": float(bbox_list[0]),
-                                    "max_lat": float(bbox_list[1]),
-                                    "min_lon": float(bbox_list[2]),
-                                    "max_lon": float(bbox_list[3])
+                    async with session.get(url, params=params) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            
+                            # Check if we got results
+                            if data.get("features") and len(data["features"]) > 0:
+                                feature = data["features"][0]
+                                coords = feature["geometry"]["coordinates"]
+                                
+                                # Mapbox returns [longitude, latitude]
+                                geocoded_result = {
+                                    "lat": coords[1],
+                                    "lng": coords[0],
+                                    "display_name": feature.get("place_name", location_query),
+                                    "address": feature.get("properties", {}),
+                                    "success": True,
+                                    "bbox": None,
+                                    "boundingbox": feature.get("bbox", []),
+                                    "place_id": feature.get("id"),
                                 }
-                        
-                        # Cache the result
-                        self._cache[cache_key] = geocoded_result
-                        logger.info(f"Successfully geocoded: '{query_variant}' -> {location.address}")
-                        return geocoded_result
+                                
+                                # Parse bounding box if available
+                                if "bbox" in feature and len(feature["bbox"]) == 4:
+                                    bbox = feature["bbox"]
+                                    geocoded_result["bbox"] = {
+                                        "min_lon": bbox[0],
+                                        "min_lat": bbox[1],
+                                        "max_lon": bbox[2],
+                                        "max_lat": bbox[3]
+                                    }
+                                
+                                # Cache the result
+                                self._cache[cache_key] = geocoded_result
+                                logger.info(f"Successfully geocoded: '{query_variant}' -> {feature.get('place_name')}")
+                                return geocoded_result
                         
                 except Exception as e:
                     logger.debug(f"Geocoding failed for '{query_variant}': {e}")
@@ -153,55 +176,63 @@ class InternationalGeocoder:
         }
 
     async def geocode_area_with_bbox(self, area_query: str, country_code: str = None) -> Dict:
-        """Geocode an area (city, state, country) and get its bounding box"""
+        """Geocode an area (city, state, country) and get its bounding box using Mapbox"""
         cache_key = f"area:{area_query}:{country_code or 'None'}"
         if cache_key in self._cache:
             return self._cache[cache_key]
         
+        if not MAPBOX_TOKEN:
+            logger.warning(f"No Mapbox token found, returning fallback for '{area_query}'")
+            fallback_result = self._get_fallback_coordinates(country_code)
+            self._cache[cache_key] = fallback_result
+            return fallback_result
+        
         # Simplify the query for better results
         simplified_query = self._simplify_query(area_query)
         
+        session = await self._get_session()
+        
         try:
-            # URL encode the query
-            encoded_query = quote(simplified_query)
+            # Mapbox Geocoding API endpoint
+            url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{quote(simplified_query)}.json"
+            params = {
+                "access_token": MAPBOX_TOKEN,
+                "limit": 1
+            }
             
-            # Use the rate-limited geocoder
-            location = await asyncio.get_event_loop().run_in_executor(
-                None, self.geocode, simplified_query
-            )
-            
-            if location:
-                # Parse bounding box
-                bbox = None
-                if "boundingbox" in location.raw:
-                    bbox_list = location.raw["boundingbox"]
-                    if len(bbox_list) == 4:
-                        bbox = {
-                            "min_lat": float(bbox_list[0]),
-                            "max_lat": float(bbox_list[1]),
-                            "min_lon": float(bbox_list[2]),
-                            "max_lon": float(bbox_list[3])
+            async with session.get(url, params=params) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    
+                    if data.get("features") and len(data["features"]) > 0:
+                        feature = data["features"][0]
+                        coords = feature["geometry"]["coordinates"]
+                        
+                        # Parse bounding box
+                        bbox = None
+                        if "bbox" in feature and len(feature["bbox"]) == 4:
+                            bbox_list = feature["bbox"]
+                            bbox = {
+                                "min_lon": bbox_list[0],
+                                "min_lat": bbox_list[1],
+                                "max_lon": bbox_list[2],
+                                "max_lat": bbox_list[3]
+                            }
+                        
+                        area_result = {
+                            "lat": coords[1],
+                            "lng": coords[0],
+                            "display_name": feature.get("place_name", area_query),
+                            "address": feature.get("properties", {}),
+                            "success": True,
+                            "bbox": bbox,
+                            "boundingbox": feature.get("bbox", []),
+                            "place_id": feature.get("id"),
+                            "geojson": feature.get("geometry")
                         }
-                
-                area_result = {
-                    "lat": location.latitude,
-                    "lng": location.longitude,
-                    "display_name": location.address,
-                    "address": location.raw.get("address", {}),
-                    "success": True,
-                    "bbox": bbox,
-                    "boundingbox": location.raw.get("boundingbox", []),
-                    "place_id": location.raw.get("place_id"),
-                    "osm_type": location.raw.get("osm_type"),
-                    "osm_id": location.raw.get("osm_id"),
-                    "importance": location.raw.get("importance"),
-                    "class": location.raw.get("class"),
-                    "type": location.raw.get("type"),
-                    "geojson": location.raw.get("geojson")  # GeoJSON polygon if available
-                }
-                
-                self._cache[cache_key] = area_result
-                return area_result
+                        
+                        self._cache[cache_key] = area_result
+                        return area_result
             
             # Fallback
             fallback_result = self._get_fallback_coordinates(country_code)

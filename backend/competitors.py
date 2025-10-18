@@ -7,14 +7,15 @@ import os
 import json
 import re
 import asyncio
-import time
 from datetime import datetime
 from dotenv import load_dotenv
 from perplexity import AsyncPerplexity
-from geopy.geocoders import Nominatim
-from geopy.exc import GeocoderTimedOut, GeocoderServiceError
+import aiohttp
 
 load_dotenv()
+
+# Mapbox API token
+MAPBOX_TOKEN = os.getenv("MAPBOX_TOKEN", "")
 
 DEFAULT_DOMAIN = "AI for legal technology"
 
@@ -110,27 +111,40 @@ def extract_json_from_response(text: str):
     print(f"   ⚠️  No JSON array found in response")
     return []
 
-def geocode_location(location: str, geolocator) -> dict:
-    """Convert location to coordinates using Nominatim"""
-    try:
-        # Add a small delay to respect Nominatim's usage policy (max 1 request per second)
-        time.sleep(1.1)
-        
-        geo_result = geolocator.geocode(location, exactly_one=True, timeout=10)
-        
-        if geo_result:
-            return {
-                "latitude": geo_result.latitude,
-                "longitude": geo_result.longitude
-            }
-        else:
-            return {"latitude": None, "longitude": None}
-    
-    except (GeocoderTimedOut, GeocoderServiceError) as e:
-        print(f"   ⚠️  Geocoding error for '{location}': {e}")
+async def geocode_location(location: str, session: aiohttp.ClientSession) -> dict:
+    """Convert location to coordinates using Mapbox Geocoding API - FAST!"""
+    if not MAPBOX_TOKEN:
+        print(f"   ⚠️  No Mapbox token found, skipping geocoding for '{location}'")
         return {"latitude": None, "longitude": None}
+    
+    try:
+        # Mapbox Geocoding API endpoint
+        url = f"https://api.mapbox.com/geocoding/v5/mapbox.places/{location}.json"
+        params = {
+            "access_token": MAPBOX_TOKEN,
+            "limit": 1
+        }
+        
+        async with session.get(url, params=params) as response:
+            if response.status == 200:
+                data = await response.json()
+                
+                if data.get("features") and len(data["features"]) > 0:
+                    coords = data["features"][0]["geometry"]["coordinates"]
+                    # Mapbox returns [longitude, latitude]
+                    return {
+                        "latitude": coords[1],
+                        "longitude": coords[0]
+                    }
+                else:
+                    print(f"   ⚠️  No results found for '{location}'")
+                    return {"latitude": None, "longitude": None}
+            else:
+                print(f"   ⚠️  Mapbox API error {response.status} for '{location}'")
+                return {"latitude": None, "longitude": None}
+    
     except Exception as e:
-        print(f"   ⚠️  Unexpected geocoding error: {e}")
+        print(f"   ⚠️  Geocoding error for '{location}': {e}")
         return {"latitude": None, "longitude": None}
 
 def calculate_threat_score(competitor: dict, domain: str) -> int:
@@ -294,15 +308,23 @@ async def main():
     print(f"🌍 GEOCODING LOCATIONS & CALCULATING THREAT SCORES")
     print(f"{'='*80}\n")
     
-    geolocator = Nominatim(user_agent="competitor_finder_app")
-    
-    for i, competitor in enumerate(all_competitors, 1):
-        location = competitor.get('location', '')
-        print(f"[{i}/{len(all_competitors)}] Processing: {competitor['company_name']} ({location})")
+    # Create aiohttp session for fast concurrent geocoding
+    async with aiohttp.ClientSession() as session:
+        # Geocode all locations concurrently - MUCH FASTER with Mapbox!
+        geocode_tasks = []
+        for i, competitor in enumerate(all_competitors, 1):
+            location = competitor.get('location', '')
+            print(f"[{i}/{len(all_competitors)}] Queuing: {competitor['company_name']} ({location})")
+            task = geocode_location(location, session)
+            geocode_tasks.append(task)
         
-        # Add coordinates
-        coords = geocode_location(location, geolocator)
-        competitor['coordinates'] = coords
+        # Execute all geocoding tasks concurrently
+        coords_results = await asyncio.gather(*geocode_tasks)
+        
+        # Assign coordinates to competitors
+        for i, (competitor, coords) in enumerate(zip(all_competitors, coords_results), 1):
+            competitor['coordinates'] = coords
+            print(f"   ✅ [{i}/{len(all_competitors)}] {competitor['company_name']}: {coords['latitude']}, {coords['longitude']}")
         
         # Use AI's threat score if provided, otherwise calculate our own
         if 'threat_score' not in competitor or competitor.get('threat_score') is None:
@@ -321,9 +343,12 @@ async def main():
                 threat_score = calculate_threat_score(competitor, domain)
                 competitor['threat_score'] = threat_score
                 score_source = "(calculated)"
-        
-        print(f"   📍 Coords: {coords['latitude']}, {coords['longitude']}")
-        print(f"   ⚠️  Threat Score: {threat_score}/10 {score_source}\n")
+    
+    # Print threat scores after geocoding
+    print(f"\n⚠️  CALCULATING THREAT SCORES\n")
+    for i, competitor in enumerate(all_competitors, 1):
+        threat_score = competitor.get('threat_score', 0)
+        print(f"   [{i}/{len(all_competitors)}] {competitor['company_name']}: {threat_score}/10")
     
     # Sort by threat score (highest first)
     all_competitors.sort(key=lambda x: x.get('threat_score', 0), reverse=True)
@@ -429,12 +454,14 @@ async def find_competitors_api(domain: str, max_results: int = 20, include_coord
     
     # Add geocoding and threat scores if requested
     if include_coordinates and all_competitors:
-        geolocator = Nominatim(user_agent="competitor_finder_api")
-        
-        for competitor in all_competitors:
-            location = competitor.get('location', '')
-            coords = geocode_location(location, geolocator)
-            competitor['coordinates'] = coords
+        async with aiohttp.ClientSession() as session:
+            # Geocode all locations concurrently - FAST with Mapbox!
+            geocode_tasks = [geocode_location(c.get('location', ''), session) for c in all_competitors]
+            coords_results = await asyncio.gather(*geocode_tasks)
+            
+            # Assign coordinates to competitors
+            for competitor, coords in zip(all_competitors, coords_results):
+                competitor['coordinates'] = coords
             
             # Use AI's threat score if provided, otherwise calculate
             if 'threat_score' not in competitor or competitor.get('threat_score') is None:
