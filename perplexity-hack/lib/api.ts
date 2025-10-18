@@ -241,22 +241,36 @@ export interface ComprehensiveMarketAnalysisResponse {
 // New API functions
 export async function extractKeywords(userPrompt: string): Promise<KeywordExtractionResponse> {
   return fetchWithRetry(async () => {
-    const response = await fetch(`${API_BASE_URL}/extract-keywords`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        user_prompt: userPrompt,
-      }),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/extract-keywords`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_prompt: userPrompt,
+        }),
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
-      throw new Error(`Failed to extract keywords: ${errorData.detail || response.statusText}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+        throw new Error(`Failed to extract keywords: ${errorData.detail || response.statusText}`);
+      }
+
+      return response.json();
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out. Please try again.');
+      }
+      throw error;
     }
-
-    return response.json();
   });
 }
 

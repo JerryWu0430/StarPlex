@@ -1,8 +1,6 @@
 "use client"
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
-import { useStartup } from "@/contexts/StartupContext"
-import { extractKeywords } from "@/lib/api"
 
 export function OrbInput({ 
   onFocusChange,
@@ -11,7 +9,6 @@ export function OrbInput({
   onFocusChange?: (focused: boolean) => void;
   onEnter?: (value: string) => void;
 }) {
-  const { setStartupIdea, setKeywords, setMarketAnalysis } = useStartup();
   const [value, setValue] = useState("")
   const [isFocused, setIsFocused] = useState(false)
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
@@ -122,22 +119,8 @@ export function OrbInput({
             type="text"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            onKeyDown={async (e) => {
+            onKeyDown={(e) => {
               if (e.key === "Enter" && value.trim()) {
-                const trimmedValue = value.trim();
-                setStartupIdea(trimmedValue);
-                
-                // Extract keywords and market analysis for the startup idea
-                try {
-                  const keywordResponse = await extractKeywords(trimmedValue);
-                  setKeywords(keywordResponse.industry_keywords_extracted);
-                  if (keywordResponse.market_analysis) {
-                    setMarketAnalysis(keywordResponse.market_analysis);
-                  }
-                } catch (error) {
-                  console.error("Error extracting keywords:", error);
-                }
-                
                 onEnter?.(value)
               }
             }}
