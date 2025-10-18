@@ -5,7 +5,7 @@ import { Particles } from "@/components/ui/particles"
 import { Globe } from "@/components/ui/globe"
 import { OrbInput } from "@/components/ui/animated-input"
 
-export default function InitPage() {
+export default function InitPage({ onEnter }: { onEnter?: (value: string) => void }) {
   const [isInputFocused, setIsInputFocused] = useState(false)
   
   return (
@@ -22,7 +22,7 @@ export default function InitPage() {
       {/* Centered OrbInput - smaller */}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="scale-100 opacity-100">
-          <OrbInput onFocusChange={setIsInputFocused} />
+          <OrbInput onFocusChange={setIsInputFocused} onEnter={onEnter} />
         </div>
       </div>
 
