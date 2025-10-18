@@ -95,6 +95,57 @@ Requirements:
             else:
                 return ["startup", "business", "market", "industry", "technology"]
 
+    def _parse_location_to_geo(self, location: str) -> str:
+        """Parse location string to Google Trends geo code"""
+        location_lower = location.lower()
+        
+        # Handle common city formats
+        if "cambridge" in location_lower and "massachusetts" in location_lower:
+            return "US-MA"  # Massachusetts
+        elif "boston" in location_lower and "massachusetts" in location_lower:
+            return "US-MA"
+        elif "new york" in location_lower:
+            return "US-NY"
+        elif "san francisco" in location_lower:
+            return "US-CA"
+        elif "los angeles" in location_lower:
+            return "US-CA"
+        elif "chicago" in location_lower:
+            return "US-IL"
+        elif "london" in location_lower:
+            return "GB-ENG"
+        elif "paris" in location_lower:
+            return "FR-IDF"
+        elif "berlin" in location_lower:
+            return "DE-BE"
+        elif "toronto" in location_lower:
+            return "CA-ON"
+        elif "sydney" in location_lower:
+            return "AU-NSW"
+        elif "waterloo" in location_lower and "ontario" in location_lower:
+            return "CA-ON"  # Ontario, Canada
+        
+        return ""
+
+    def _extract_country_code(self, location: str) -> str:
+        """Extract country code from location string"""
+        location_lower = location.lower()
+        
+        if "united states" in location_lower or "usa" in location_lower:
+            return "US"
+        elif "united kingdom" in location_lower or "uk" in location_lower:
+            return "GB"
+        elif "canada" in location_lower:
+            return "CA"
+        elif "australia" in location_lower:
+            return "AU"
+        elif "germany" in location_lower:
+            return "DE"
+        elif "france" in location_lower:
+            return "FR"
+        
+        return "US"  # Default fallback
+
     def get_google_trends_data(self, queries: List[str], region: str = "") -> Dict[str, Any]:
         """Get Google Trends data for the queries with optional region"""
         
@@ -107,9 +158,22 @@ Requirements:
             "api_key": os.getenv("SERPAPI_KEY")
         }
         
-        # Add region if provided
+        # Add region if provided - handle both country codes and city names
         if region:
-            params["geo"] = region
+            # If it's a simple country code (US, UK, etc.), use as is
+            if len(region) <= 3 and region.isupper():
+                params["geo"] = region
+            else:
+                # For city names like "Cambridge, Massachusetts, United States"
+                # Try to extract a more specific geo code
+                geo_code = self._parse_location_to_geo(region)
+                if geo_code:
+                    params["geo"] = geo_code
+                else:
+                    # Fallback to country-level if we can't parse city
+                    country_code = self._extract_country_code(region)
+                    if country_code:
+                        params["geo"] = country_code
         
         try:
             res = requests.get("https://serpapi.com/search.json", params=params, timeout=60)
