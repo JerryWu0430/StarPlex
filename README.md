@@ -71,6 +71,8 @@ pip install -r requirements.txt
 3. Set up your environment variables (create a `.env` file):
 ```bash
 PERPLEXITY_API_KEY=your_api_key_here
+MAPBOX_TOKEN = your_api_key_here
+SERPAPI_KEY = your_api_key_here
 ```
 
 4. Start the backend server:
