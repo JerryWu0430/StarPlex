@@ -1,5 +1,41 @@
 const API_BASE_URL = "http://localhost:8000";
 
+// Helper function to retry API calls with exponential backoff
+async function fetchWithRetry<T>(
+  fetchFn: () => Promise<T>,
+  maxRetries: number = 2,
+  initialDelay: number = 2000
+): Promise<T> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fetchFn();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Check if it's a rate limit error (429)
+      const isRateLimit = error?.message?.includes("429") || 
+                          error?.message?.includes("rate limit") ||
+                          error?.message?.includes("Rate limit");
+      
+      // If it's the last attempt or not a rate limit error, throw
+      if (attempt === maxRetries || !isRateLimit) {
+        throw error;
+      }
+      
+      // Calculate delay with exponential backoff
+      const delay = initialDelay * Math.pow(2, attempt);
+      console.log(`Rate limit hit, retrying in ${delay/1000}s... (attempt ${attempt + 1}/${maxRetries + 1})`);
+      
+      // Wait before retrying
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw lastError || new Error("Max retries exceeded");
+}
+
 export interface Competitor {
   company_name: string;
   location: string;
@@ -55,66 +91,72 @@ export interface CofounderResponse {
 }
 
 export async function findCompetitors(idea: string, maxResults: number = 20): Promise<CompetitorResponse> {
-  const response = await fetch(`${API_BASE_URL}/find-competitors`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      idea,
-      max_results: maxResults,
-      include_coordinates: true,
-    }),
+  return fetchWithRetry(async () => {
+    const response = await fetch(`${API_BASE_URL}/find-competitors`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        idea,
+        max_results: maxResults,
+        include_coordinates: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(`Failed to find competitors: ${errorData.detail || response.statusText}`);
+    }
+
+    return response.json();
   });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(`Failed to find competitors: ${errorData.detail || response.statusText}`);
-  }
-
-  return response.json();
 }
 
 export async function findVCs(idea: string, maxResults: number = 20): Promise<VCResponse> {
-  const response = await fetch(`${API_BASE_URL}/find-vcs`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      idea,
-      max_results: maxResults,
-      include_coordinates: true,
-    }),
+  return fetchWithRetry(async () => {
+    const response = await fetch(`${API_BASE_URL}/find-vcs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        idea,
+        max_results: maxResults,
+        include_coordinates: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(`Failed to find VCs: ${errorData.detail || response.statusText}`);
+    }
+
+    return response.json();
   });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(`Failed to find VCs: ${errorData.detail || response.statusText}`);
-  }
-
-  return response.json();
 }
 
 export async function findCofounders(idea: string, maxResults: number = 20): Promise<CofounderResponse> {
-  const response = await fetch(`${API_BASE_URL}/find-cofounders`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      idea,
-      max_results: maxResults,
-      include_coordinates: true,
-    }),
+  return fetchWithRetry(async () => {
+    const response = await fetch(`${API_BASE_URL}/find-cofounders`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        idea,
+        max_results: maxResults,
+        include_coordinates: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(`Failed to find cofounders: ${errorData.detail || response.statusText}`);
+    }
+
+    return response.json();
   });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(`Failed to find cofounders: ${errorData.detail || response.statusText}`);
-  }
-
-  return response.json();
 }
 
 export async function getAudienceMap(
@@ -122,22 +164,24 @@ export async function getAudienceMap(
   targetDescription: string = "Target audience for this startup",
   country?: string
 ) {
-  const params = new URLSearchParams({
-    startup_idea: startupIdea,
-    target_description: targetDescription,
+  return fetchWithRetry(async () => {
+    const params = new URLSearchParams({
+      startup_idea: startupIdea,
+      target_description: targetDescription,
+    });
+
+    if (country) {
+      params.append("country", country);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/audience-map?${params.toString()}`);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(`Failed to get audience map: ${errorData.detail || response.statusText}`);
+    }
+
+    return response.json();
   });
-
-  if (country) {
-    params.append("country", country);
-  }
-
-  const response = await fetch(`${API_BASE_URL}/audience-map?${params.toString()}`);
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(`Failed to get audience map: ${errorData.detail || response.statusText}`);
-  }
-
-  return response.json();
 }
 
