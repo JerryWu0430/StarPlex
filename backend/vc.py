@@ -22,7 +22,7 @@ DEFAULT_DOMAIN = "AI for legal technology"
 async def query_perplexity(client, prompt: str):
     """Single query to Perplexity Chat - ask for structured JSON output"""
     response = await client.chat.completions.create(
-        model="sonar-pro",
+        model="sonar",
         messages=[
             {
                 "role": "system",
