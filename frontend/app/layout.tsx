@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { StartupProvider } from "@/contexts/StartupContext";
+import { Analytics } from "@vercel/analytics/next"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,6 +29,9 @@ const hostGrotesk = localFont({
 export const metadata: Metadata = {
   title: "StarPlex",
   description: "Test out your ideas.",
+  icons: {
+    icon: "/starplex.png",
+  },
 };
 
 export default function RootLayout({
@@ -37,6 +41,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <Analytics />
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${hostGrotesk.variable} antialiased`}
         suppressHydrationWarning

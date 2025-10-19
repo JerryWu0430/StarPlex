@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { Particles } from "@/components/ui/particles"
 import { Globe } from "@/components/ui/globe"
 import { OrbInput } from "@/components/ui/animated-input"
@@ -22,7 +23,18 @@ export default function InitPage({ onEnter }: { onEnter?: (value: string) => voi
       
       {/* STARPLEX Title */}
       <div className={`absolute top-30 sm:top-30 left-1/2 transform -translate-x-1/2 transition-all duration-300 ${isInputFocused ? 'blur-md' : ''}`}>
+         {/* STARPLEX Logo */}
+
+          
          <h1 className="font-host-grotesk text-6xl sm:text-8xl md:text-10xl font-light tracking-wider text-center px-4 whitespace-nowrap flex items-center justify-center">
+          <Image 
+              src="/starplex.png" 
+              alt="StarPlex" 
+              width={100}
+              height={100}
+              priority
+              className="h-22 sm:h-30 md:h-38 w-auto object-contain"
+            />
            <span className="text-white">STAR</span>
            <TextShimmer 
              duration={2}
