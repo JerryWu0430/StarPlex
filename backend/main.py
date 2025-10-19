@@ -47,12 +47,20 @@ if frontend_url:
     else:
         allowed_origins.append(frontend_url + '/')
 
+# Allow all Vercel preview and production deployments
+allowed_origins.extend([
+    "https://*.vercel.app",
+    "https://starplex.vercel.app",
+    "https://starplex-*.vercel.app",
+])
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_origin_regex=r"https://.*\.vercel\.app",
 )
 
 perplexity_client = PerplexityAudienceAnalyzer()
