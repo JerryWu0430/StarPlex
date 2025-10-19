@@ -26,8 +26,8 @@ export const Component = () => {
         )}
         style={
           {
-            ["--mx" as any]: "50%",
-            ["--my" as any]: "50%",
+            ["--mx"]: "50%",
+            ["--my"]: "50%",
           } as React.CSSProperties
         }
       >
@@ -67,7 +67,7 @@ export const Component = () => {
               <PerplexityMonogram className="h-4 w-4 text-white" />
             </span>
             <span className="text-sm md:text-base font-medium tracking-wide text-neutral-800 dark:text-white">
-              Backed by Perplexity
+              Powered by Perplexity
             </span>
           </div>
         </div>
