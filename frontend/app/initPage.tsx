@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Particles } from "@/components/ui/particles"
 import { Globe } from "@/components/ui/globe"
 import { OrbInput } from "@/components/ui/animated-input"
+import { TextShimmer } from "@/components/ui/text-shimmer"
 
 export default function InitPage({ onEnter }: { onEnter?: (value: string) => void }) {
   const [isInputFocused, setIsInputFocused] = useState(false)
@@ -20,16 +21,28 @@ export default function InitPage({ onEnter }: { onEnter?: (value: string) => voi
       />
       
       {/* STARPLEX Title */}
-      <div className={`absolute top-30 left-1/2 transform -translate-x-1/2 transition-all duration-300 ${isInputFocused ? 'blur-md' : ''}`}>
-        <h1 className="font-aeonik-trial text-6xl md:text-8xl font-normal tracking-wider">
-          <span className="text-white">STAR</span>
-          <span className="text-[#32B9C5]">PLEX</span>
-        </h1>
+      <div className={`absolute top-30 sm:top-30 left-1/2 transform -translate-x-1/2 transition-all duration-300 ${isInputFocused ? 'blur-md' : ''}`}>
+         <h1 className="font-host-grotesk text-6xl sm:text-8xl md:text-10xl font-light tracking-wider text-center px-4 whitespace-nowrap flex items-center justify-center">
+           <span className="text-white">STAR</span>
+           <TextShimmer 
+             duration={2}
+             className='text-6xl sm:text-8xl md:text-10xl font-light'
+             as="span"
+             style={
+               {
+                 '--base-color': '#32B9C5',
+                 '--base-gradient-color': '#7DD3DD',
+               } as React.CSSProperties
+             }
+           >
+             PLEX
+           </TextShimmer>
+         </h1>
       </div>
       
       {/* Centered OrbInput - smaller */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="scale-100 opacity-100">
+      <div className="absolute inset-0 flex items-center justify-center px-4">
+        <div className="scale-100 opacity-100 ">
           <OrbInput onFocusChange={setIsInputFocused} onEnter={onEnter} />
         </div>
       </div>

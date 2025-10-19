@@ -96,14 +96,14 @@ export function OrbInput({
   }, [placeholderIndex, placeholders])
 
   return (
-    <div className="relative">
+    <div className="relative w-full max-w-[90vw] sm:max-w-none">
       <div
-        className={`flex items-center gap-3 p-4 bg-black/20 backdrop-blur-md shadow-lg transition-all duration-300 ease-out rounded-full border border-white/20 ${
+        className={`flex items-center gap-2 sm:gap-3 p-3 sm:p-4 bg-black/20 backdrop-blur-md shadow-lg transition-all duration-300 ease-out rounded-full border border-white/20 ${
           isFocused ? "shadow-xl scale-[1.02] border-white/40 bg-black/30" : "shadow-lg"
         }`}
       >
         <div className="relative flex-shrink-0">
-          <div className="w-12 h-12 rounded-full overflow-hidden transition-all duration-300 scale-100">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden transition-all duration-300 scale-100">
             <Image
               src="https://media.giphy.com/media/26gsuUjoEBmLrNBxC/giphy.gif"
               alt="Animated orb"
@@ -115,9 +115,9 @@ export function OrbInput({
           </div>
         </div>
 
-        <div className="w-px h-8 bg-white/30" />
+        <div className="w-px h-6 sm:h-8 bg-white/30" />
 
-        <div className="flex-1 w-[400px]">
+        <div className="flex-1 min-w-0 w-[300px] sm:w-[400px]">
           <input
             data-testid="orb-input"
             type="text"
@@ -138,7 +138,7 @@ export function OrbInput({
             }}
             placeholder={`${displayedText}${isTyping ? "|" : ""}`}
             aria-label="Ask a question"
-            className="w-full text-lg text-white placeholder-gray-300 bg-transparent border-none outline-none font-light"
+            className="w-full text-base text-sm sm:text-lg text-white placeholder-gray-300 bg-transparent border-none outline-none font-light"
           />
         </div>
       </div>

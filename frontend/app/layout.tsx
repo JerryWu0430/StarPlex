@@ -14,15 +14,15 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const aeonikTrial = localFont({
+const hostGrotesk = localFont({
   src: [
     {
-      path: "../public/AeonikTRIAL-Regular.otf",
+      path: "../public/HostGrotesk-Regular.ttf",
       weight: "400",
       style: "normal",
     },
   ],
-  variable: "--font-aeonik-trial",
+  variable: "--font-host-grotesk",
 });
 
 export const metadata: Metadata = {
@@ -38,7 +38,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${aeonikTrial.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${hostGrotesk.variable} antialiased`}
         suppressHydrationWarning
       >
         <StartupProvider>

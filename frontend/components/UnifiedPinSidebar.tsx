@@ -130,8 +130,8 @@ const LinkDisplay: React.FC<{ links: string[] }> = ({ links }) => {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
-        <LinkIcon className="w-4 h-4" />
+      <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-300">
+        <LinkIcon className="w-3 h-3 sm:w-4 sm:h-4" />
         <span>Links</span>
       </div>
       <div className="space-y-1.5">
@@ -143,14 +143,14 @@ const LinkDisplay: React.FC<{ links: string[] }> = ({ links }) => {
               href={link}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-center gap-3 p-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-all duration-200 hover:scale-[1.02]"
+              className="group flex items-center gap-2 sm:gap-3 p-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 transition-all duration-200 hover:scale-[1.02]"
             >
-              <span className="text-lg">{icon}</span>
+              <span className="text-base sm:text-lg">{icon}</span>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-white group-hover:text-blue-300 transition-colors">
+                <div className="text-xs sm:text-sm font-medium text-white group-hover:text-blue-300 transition-colors">
                   {label}
                 </div>
-                <div className="text-xs text-gray-400 truncate">
+                <div className="text-[10px] sm:text-xs text-gray-400 truncate">
                   {link}
                 </div>
               </div>
@@ -173,13 +173,13 @@ const ExplanationSection: React.FC<{
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2 text-sm font-medium text-gray-300">
+      <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-gray-300">
         {icon}
         <span>{title}</span>
       </div>
       <ul className="space-y-1.5">
         {items.map((item, idx) => (
-          <li key={idx} className="text-sm text-gray-400 pl-4 relative before:content-['•'] before:absolute before:left-0 before:text-blue-400">
+          <li key={idx} className="text-xs sm:text-sm text-gray-400 pl-4 relative before:content-['•'] before:absolute before:left-0 before:text-blue-400">
             {item}
           </li>
         ))}
@@ -202,9 +202,9 @@ const ScoreDisplay: React.FC<{ score: number; maxScore?: number; label: string; 
 
   return (
     <div className="flex items-center justify-between">
-      <span className="text-sm text-gray-300">{label}</span>
+      <span className="text-xs sm:text-sm text-gray-300">{label}</span>
       <div className="flex items-center gap-2">
-        <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
+        <div className="w-12 sm:w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
           <div
             className={`h-full transition-all duration-500 ${type === 'positive'
               ? (percentage >= 80 ? 'bg-green-400' : percentage >= 60 ? 'bg-yellow-400' : 'bg-red-400')
@@ -213,7 +213,7 @@ const ScoreDisplay: React.FC<{ score: number; maxScore?: number; label: string; 
             style={{ width: `${percentage}%` }}
           />
         </div>
-        <span className={`text-sm font-medium ${colorClass}`}>
+        <span className={`text-xs sm:text-sm font-medium ${colorClass}`}>
           {score}/{maxScore}
         </span>
       </div>
@@ -379,19 +379,19 @@ const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
       return (
         <div className="space-y-4">
           {/* Header */}
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-green-400" />
+          <div className="flex items-start gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
+              <Building2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-semibold text-white truncate">{pinData.name}</h3>
-              <p className="text-sm text-gray-400 truncate">{pinData.firm}</p>
+              <h3 className="text-base sm:text-lg font-semibold text-white truncate">{pinData.name}</h3>
+              <p className="text-xs sm:text-sm text-gray-400 truncate">{pinData.firm}</p>
             </div>
           </div>
 
           {/* Location */}
-          <div className="flex items-center gap-2 text-sm text-gray-300">
-            <MapPin className="w-4 h-4" />
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-300">
+            <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
             <span>{pinData.location}</span>
           </div>
 
@@ -432,25 +432,25 @@ const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
       return (
         <div className="space-y-4">
           {/* Header */}
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5 text-red-400" />
+          <div className="flex items-start gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
+              <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-red-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-semibold text-white truncate">{pinData.company_name}</h3>
-              <p className="text-sm text-gray-400">Competitor</p>
+              <h3 className="text-base sm:text-lg font-semibold text-white truncate">{pinData.company_name}</h3>
+              <p className="text-xs sm:text-sm text-gray-400">Competitor</p>
             </div>
           </div>
 
           {/* Location */}
-          <div className="flex items-center gap-2 text-sm text-gray-300">
-            <MapPin className="w-4 h-4" />
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-300">
+            <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
             <span>{pinData.location}</span>
           </div>
 
           {/* Founded Date */}
-          <div className="flex items-center gap-2 text-sm text-gray-300">
-            <Calendar className="w-4 h-4" />
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-300">
+            <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
             <span>Founded: {pinData.date_founded}</span>
           </div>
 
@@ -491,19 +491,19 @@ const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
       return (
         <div className="space-y-4">
           {/* Header */}
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-              <Users className="w-5 h-5 text-purple-400" />
+          <div className="flex items-start gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-semibold text-white truncate">{pinData.name}</h3>
+              <h3 className="text-base sm:text-lg font-semibold text-white truncate">{pinData.name}</h3>
               <p className="text-sm text-gray-400">Potential Cofounder</p>
             </div>
           </div>
 
           {/* Location */}
-          <div className="flex items-center gap-2 text-sm text-gray-300">
-            <MapPin className="w-4 h-4" />
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-300">
+            <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
             <span>{pinData.location}</span>
           </div>
 
@@ -520,17 +520,17 @@ const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
               <ExplanationSection
                 title="Why It's a Good Match"
                 items={pinData.explanation.why_good_match}
-                icon={<Star className="w-4 h-4" />}
+                icon={<Star className="w-3 h-3 sm:w-4 sm:h-4" />}
               />
               <ExplanationSection
                 title="Their Expertise"
                 items={pinData.explanation.expertise}
-                icon={<Users className="w-4 h-4" />}
+                icon={<Users className="w-3 h-3 sm:w-4 sm:h-4" />}
               />
               <ExplanationSection
                 title="Their Unique Value"
                 items={pinData.explanation.unique_value}
-                icon={<TrendingUp className="w-4 h-4" />}
+                icon={<TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />}
               />
             </div>
           )}
@@ -544,25 +544,25 @@ const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
       return (
         <div className="space-y-4">
           {/* Header */}
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-              <MapPin className="w-5 h-5 text-blue-400" />
+          <div className="flex items-start gap-2 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
+              <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-semibold text-white truncate">{pinData.name}</h3>
-              <p className="text-sm text-gray-400">Audience Member</p>
+              <h3 className="text-base sm:text-lg font-semibold text-white truncate">{pinData.name}</h3>
+              <p className="text-xs sm:text-sm text-gray-400">Audience Member</p>
             </div>
           </div>
 
           {/* Location */}
-          <div className="flex items-center gap-2 text-sm text-gray-300">
-            <MapPin className="w-4 h-4" />
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-300">
+            <MapPin className="w-3 h-3 sm:w-4 sm:h-4" />
             <span>{pinData.location}</span>
           </div>
 
           {/* Description */}
           {pinData.description && (
-            <div className="text-sm text-gray-300">
+            <div className="text-xs sm:text-sm text-gray-300">
               <p className="font-medium mb-1">Description:</p>
               <p>{pinData.description}</p>
             </div>
@@ -570,7 +570,7 @@ const PinContent: React.FC<{ pinData: PinData }> = ({ pinData }) => {
 
           {/* Target Fit */}
           {pinData.target_fit && (
-            <div className="text-sm text-gray-300">
+            <div className="text-xs sm:text-sm text-gray-300">
               <p className="font-medium mb-1">Target Fit:</p>
               <p>{pinData.target_fit}</p>
             </div>
@@ -622,7 +622,7 @@ export default function UnifiedPinSidebar({
   isVisible,
   onClose,
   position = "right",
-  width = "360px",
+  width = "400px",
   className = "",
 }: UnifiedPinSidebarProps) {
   const [isPinned, setIsPinned] = useState(false);
@@ -668,7 +668,7 @@ export default function UnifiedPinSidebar({
     window.open(searchUrl, '_blank', 'noopener,noreferrer');
   };
 
-  const positionClasses = position === "left" ? "left-4" : "right-4";
+  const positionClasses = position === "left" ? "sm:left-4" : "sm:right-4";
   const transformClasses = position === "left"
     ? (isVisible ? "translate-x-0" : "-translate-x-full")
     : (isVisible ? "translate-x-0" : "translate-x-full");
@@ -678,13 +678,18 @@ export default function UnifiedPinSidebar({
   return (
     <div
       ref={sidebarRef}
+      data-sidebar
       className={`
-        fixed top-4 ${positionClasses} z-20
+        fixed top-0 sm:top-4 z-20
         transition-all duration-300 linear
         ${transformClasses}
         ${className}
+        inset-x-2 sm:inset-x-auto ${positionClasses}
       `}
-      style={{ width: isVisible ? width : "0px" }}
+      style={{ 
+        width: isVisible ? 'calc(100vw - 1rem)' : "0px",
+        ['--sidebar-desktop-width' as string]: width,
+      }}
       onClick={handleClick}
     >
       <div
@@ -693,33 +698,33 @@ export default function UnifiedPinSidebar({
           border border-black/50
           rounded-xl shadow-lg
           overflow-hidden
-          h-[calc(100vh-2rem)]
+          h-screen sm:h-[calc(100vh-2rem)]
           flex flex-col
           ${isPinned ? "ring-2 ring-blue-500/20" : ""}
         `}
         style={{
-          minWidth: isVisible ? width : "0px",
-          maxWidth: isVisible ? width : "0px"
+          minWidth: isVisible ? 'calc(100vw - 1rem)' : "0px",
+          maxWidth: isVisible ? 'calc(100vw - 1rem)' : "0px",
         }}
       >
         {/* Header with close button */}
-        <div className="flex items-center justify-between p-4 border-b border-black/50 bg-black/50">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-black/50 bg-black/50">
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${pinData.type === 'vc' ? 'bg-green-400' :
               pinData.type === 'competitor' ? 'bg-red-400' :
                 pinData.type === 'cofounder' ? 'bg-purple-400' :
                   'bg-blue-400'
               }`} />
-            <h3 className="text-sm font-semibold text-white capitalize">
+            <h3 className="text-xs sm:text-sm font-semibold text-white capitalize">
               {pinData.type === 'vc' ? 'Venture Capital' :
                 pinData.type === 'competitor' ? 'Competitor' :
                   pinData.type === 'cofounder' ? 'Cofounder' : 'Audience'}
             </h3>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={handlePerplexitySearch}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all group ${pinData.type === 'vc'
+              className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg transition-all group ${pinData.type === 'vc'
                 ? 'bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 hover:border-green-500/60'
                 : pinData.type === 'competitor'
                   ? 'bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 hover:border-red-500/60'
@@ -730,7 +735,7 @@ export default function UnifiedPinSidebar({
               aria-label="Search in Perplexity"
               title="Deep dive in Perplexity"
             >
-              <Search className={`w-3.5 h-3.5 ${pinData.type === 'vc'
+              <Search className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${pinData.type === 'vc'
                 ? 'text-green-400 group-hover:text-green-300'
                 : pinData.type === 'competitor'
                   ? 'text-red-400 group-hover:text-red-300'
@@ -738,7 +743,7 @@ export default function UnifiedPinSidebar({
                     ? 'text-purple-400 group-hover:text-purple-300'
                     : 'text-blue-400 group-hover:text-blue-300'
                 }`} />
-              <span className={`text-xs font-medium ${pinData.type === 'vc'
+              <span className={`text-xs font-medium hidden sm:inline ${pinData.type === 'vc'
                 ? 'text-green-300 group-hover:text-green-200'
                 : pinData.type === 'competitor'
                   ? 'text-red-300 group-hover:text-red-200'
@@ -758,7 +763,7 @@ export default function UnifiedPinSidebar({
         </div>
 
         {/* Content area */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-4">
           <PinContent pinData={pinData} />
           <MarketAnalysisSection pinData={pinData} />
         </div>

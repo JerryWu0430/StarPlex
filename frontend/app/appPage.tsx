@@ -6,7 +6,7 @@ import { FieldSwitch } from "@/components/fieldSwitch";
 import { InputGroup, InputGroupButton, InputGroupAddon, InputGroupText, InputGroupTextarea, InputGroupInput } from "@/components/ui/input-group";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
-import { ArrowUpIcon, LoaderIcon, PlusIcon, CheckCircle2, XCircle, ChevronDown } from "lucide-react";
+import { ArrowUpIcon, LoaderIcon, PlusIcon, CheckCircle2, XCircle, ChevronDown, Settings, X } from "lucide-react";
 import { findCompetitors, findVCs, findCofounders, getAudienceMap, sendChatMessage, type CompetitorResponse, type VCResponse, type CofounderResponse, type ChatMessage } from "@/lib/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
@@ -45,6 +45,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
   const [chatInput, setChatInput] = useState("");
   const [isChatExpanded, setIsChatExpanded] = useState(false);
   const [isSendingChat, setIsSendingChat] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Use startupIdea from context, fallback to initialQuery prop for backward compatibility
@@ -220,7 +221,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
     <div className="fixed inset-0 w-full h-full">
       {/* Loading indicator */}
       {currentLoading && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-96">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 w-[calc(100vw-2rem)] sm:w-96 max-w-full px-2 sm:px-0">
           <InputGroup data-disabled>
             <InputGroupInput placeholder={getLoadingMessage() || "Loading..."} disabled />
             <InputGroupAddon>
@@ -236,19 +237,111 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
 
       {/* Success/Error alerts */}
       {alert && (
-        <div className="absolute top-4 left-4 z-20">
+        <div className="absolute top-4 left-2 right-2 sm:left-4 sm:right-auto z-20 max-w-[calc(100vw-1rem)] sm:max-w-md">
           <Alert variant={alert.type === "error" ? "destructive" : "default"} className="bg-card/90">
             {alert.type === "success" ? (
               <CheckCircle2 className="h-4 w-4 text-green-500" />
             ) : (
               <XCircle className="h-4 w-4" />
             )}
-            <AlertDescription>{alert.message}</AlertDescription>
+            <AlertDescription className="text-xs sm:text-sm">{alert.message}</AlertDescription>
           </Alert>
         </div>
       )}
 
-      <div className="absolute top-4 right-4 z-10 grid grid-cols-1 gap-2">
+      {/* Mobile FAB */}
+      <button
+        onClick={() => setIsMobileMenuOpen(true)}
+        className="sm:hidden fixed top-4 right-4 z-30 w-12 h-12 bg-card/95 backdrop-blur-md rounded-full shadow-lg border border-border/50 flex items-center justify-center hover:bg-card transition-all duration-200 hover:scale-105"
+        aria-label="Open menu"
+      >
+        <Settings className="w-5 h-5" />
+      </button>
+
+      {/* Mobile Menu Overlay */}
+      {isMobileMenuOpen && (
+        <div className="sm:hidden fixed inset-0 z-40 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="absolute top-0 right-0 w-full max-w-xs h-full bg-card/98 backdrop-blur-md border-l border-border/50 animate-in slide-in-from-right duration-300">
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-border/30">
+                <h2 className="text-lg font-semibold">Display Options</h2>
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-2 rounded-full hover:bg-muted transition-colors"
+                  aria-label="Close menu"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                <FieldSwitch
+                  title="Customer Demographics"
+                  description="Where's the market?"
+                  checked={showDemographics}
+                  onCheckedChange={setShowDemographics}
+                />
+                <FieldSwitch
+                  title="Market Competitors"
+                  description="Who's copying your genius idea?"
+                  checked={showCompetitors}
+                  onCheckedChange={setShowCompetitors}
+                />
+                <FieldSwitch
+                  title="Co-ballers"
+                  description="Who's willing to scale a B2B AI SaaS startup?"
+                  checked={showCofounders}
+                  onCheckedChange={setShowCofounders}
+                />
+                <FieldSwitch
+                  title="VC Victims"
+                  description="Who is willing to throw you money?"
+                  checked={showVCs}
+                  onCheckedChange={setShowVCs}
+                />
+                {onGeneratePitchDeck && (
+                  <div className="w-full max-w-xs">
+                    <button
+                      onClick={() => {
+                        onGeneratePitchDeck();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      disabled={isGeneratingPitchDeck}
+                      className="w-full border p-3 shadow-sm bg-card opacity-90 rounded-lg transition-all duration-200 hover:opacity-100 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
+                    >
+                      <div className="flex-1 flex flex-col gap-1.5 leading-snug text-left">
+                        <div className="text-xs sm:text-sm font-medium leading-snug">
+                          {isGeneratingPitchDeck ? "Generating Pitch Deck..." : "Generate Pitch Deck"}
+                        </div>
+                        <div className="text-[10px] sm:text-xs text-muted-foreground leading-normal font-normal">
+                          {isGeneratingPitchDeck
+                            ? "AI is creating your presentation..."
+                            : "Create investor-ready slides with AI"}
+                        </div>
+                      </div>
+                      {isGeneratingPitchDeck ? (
+                        <svg className="animate-spin h-5 w-5 text-primary flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      ) : (
+                        <svg className="h-5 w-5 text-muted-foreground flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Desktop Switches - hidden on mobile */}
+      <div className="hidden sm:flex absolute top-4 right-4 z-10 flex-col gap-2">
         <FieldSwitch
           title="Customer Demographics"
           description="Where's the market?"
@@ -308,13 +401,13 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
       </div>
 
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 w-full max-w-xl opacity-95">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 w-[calc(100vw-2rem)] sm:w-full sm:max-w-xl opacity-95 px-2 sm:px-0">
         {/* Collapsed chat indicator */}
         {!isChatExpanded && chatMessages.length > 0 && (
           <div className="mb-2 flex justify-center animate-in fade-in duration-200">
             <button
               onClick={() => setIsChatExpanded(true)}
-              className="px-4 py-2 bg-card/95 backdrop-blur-md rounded-full shadow-lg border border-border/50 hover:bg-card transition-all duration-200 flex items-center gap-2 hover:scale-105"
+              className="px-3 py-1.5 sm:px-4 sm:py-2 bg-card/95 backdrop-blur-md rounded-full shadow-lg border border-border/50 hover:bg-card transition-all duration-200 flex items-center gap-2 hover:scale-105"
             >
               <span className="text-xs font-medium">
                 {chatMessages.length} message{chatMessages.length !== 1 ? 's' : ''}
@@ -329,7 +422,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
           <div className="mb-2 animate-in slide-in-from-bottom-4 fade-in duration-300">
             <div className="relative bg-card/98 backdrop-blur-md rounded-lg shadow-2xl border border-border/50">
               {/* Collapse button */}
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border/30">
+              <div className="flex items-center justify-between px-3 py-2 sm:px-4 border-b border-border/30">
                 <span className="text-xs text-muted-foreground font-medium">
                   Chat Messages
                 </span>
@@ -345,16 +438,16 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
               {/* Messages container */}
               <div
                 ref={chatContainerRef}
-                className="max-h-96 overflow-y-auto p-4 flex flex-col-reverse custom-scrollbar"
+                className="max-h-60 sm:max-h-96 overflow-y-auto p-2 sm:p-4 flex flex-col-reverse custom-scrollbar"
               >
                 {/* Messages in reverse order so newest is at bottom */}
                 {[...chatMessages].reverse().map((msg, idx) => (
                   <div
                     key={chatMessages.length - 1 - idx}
-                    className={`mb-3 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                    className={`mb-2 sm:mb-3 flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`max-w-[80%] rounded-lg p-3 ${msg.role === "user"
+                      className={`max-w-[85%] sm:max-w-[80%] rounded-lg p-2 sm:p-3 ${msg.role === "user"
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted"
                         }`}
