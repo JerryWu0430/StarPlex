@@ -9,7 +9,6 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowUpIcon, LoaderIcon, PlusIcon, CheckCircle2, XCircle, ChevronDown } from "lucide-react";
 import { findCompetitors, findVCs, findCofounders, getAudienceMap, sendChatMessage, type CompetitorResponse, type VCResponse, type CofounderResponse, type ChatMessage } from "@/lib/api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import type { Feature } from "geojson";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { useStartup } from "@/contexts/StartupContext";
 
@@ -35,15 +34,11 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
   const [competitorsData, setCompetitorsData] = useState<CompetitorResponse | null>(null);
   const [vcsData, setVCsData] = useState<VCResponse | null>(null);
   const [cofoundersData, setCofoundersData] = useState<CofounderResponse | null>(null);
-  const [demographicsData, setDemographicsData] = useState<any | null>(null);
+  const [demographicsData, setDemographicsData] = useState<unknown | null>(null);
 
   // Loading and alert states
   const [currentLoading, setCurrentLoading] = useState<LoadingStatus>(null);
   const [alert, setAlert] = useState<AlertType>(null);
-
-  // Sidebar state for heatmap details
-  const [isSidebarVisible, setIsSidebarVisible] = useState(false);
-  const [selectedHeatmapFeature, setSelectedHeatmapFeature] = useState<Feature | null>(null);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -85,7 +80,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
         content: response.response,
       };
       setChatMessages((prev) => [...prev, assistantMessage]);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error sending chat message:", error);
       const errorMessage: ChatMessage = {
         role: "assistant",
@@ -113,34 +108,6 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
   }, [chatMessages, isChatExpanded]);
 
 
-  // Handle heatmap click to show sidebar with feature details
-  const handleHeatmapClick = (feature: Feature | null) => {
-    setSelectedHeatmapFeature(feature);
-    setIsSidebarVisible(!!feature);
-  };
-
-  // Handle sidebar close
-  const handleSidebarClose = () => {
-    setIsSidebarVisible(false);
-    setSelectedHeatmapFeature(null);
-  };
-
-  // Handle Escape key to close sidebar
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isSidebarVisible) {
-        handleSidebarClose();
-      }
-    };
-
-    if (isSidebarVisible) {
-      document.addEventListener('keydown', handleKeyDown);
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isSidebarVisible]);
 
   // Fetch ALL data sequentially - one at a time with delays to avoid rate limits
   useEffect(() => {
@@ -165,9 +132,9 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
         setDemographicsData(demographicsResult);
         setAlert({ type: "success", message: "Customer demographics loaded" });
         setTimeout(() => setAlert(null), 3000);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Error fetching demographics:", err);
-        const errorMsg = err?.message?.includes("429") ? "Rate limit - waiting..." : "Failed to fetch demographics";
+        const errorMsg = (err instanceof Error && err.message?.includes("429")) ? "Rate limit - waiting..." : "Failed to fetch demographics";
         setAlert({ type: "error", message: errorMsg });
         setTimeout(() => setAlert(null), 3000);
       }
@@ -184,9 +151,9 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
         setCompetitorsData(competitorsResult);
         setAlert({ type: "success", message: `Found ${competitorsResult.total_found} competitors` });
         setTimeout(() => setAlert(null), 3000);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Error fetching competitors:", err);
-        const errorMsg = err?.message?.includes("429") ? "Rate limit - waiting..." : "Failed to fetch competitors";
+        const errorMsg = (err instanceof Error && err.message?.includes("429")) ? "Rate limit - waiting..." : "Failed to fetch competitors";
         setAlert({ type: "error", message: errorMsg });
         setTimeout(() => setAlert(null), 3000);
       }
@@ -203,9 +170,9 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
         setCofoundersData(cofoundersResult);
         setAlert({ type: "success", message: `Found ${cofoundersResult.total_found} cofounders` });
         setTimeout(() => setAlert(null), 3000);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Error fetching cofounders:", err);
-        const errorMsg = err?.message?.includes("429") ? "Rate limit - waiting..." : "Failed to fetch cofounders";
+        const errorMsg = (err instanceof Error && err.message?.includes("429")) ? "Rate limit - waiting..." : "Failed to fetch cofounders";
         setAlert({ type: "error", message: errorMsg });
         setTimeout(() => setAlert(null), 3000);
       }
@@ -222,9 +189,9 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
         setVCsData(vcsResult);
         setAlert({ type: "success", message: `Found ${vcsResult.total_found} VCs` });
         setTimeout(() => setAlert(null), 3000);
-      } catch (err: any) {
+      } catch (err) {
         console.error("Error fetching VCs:", err);
-        const errorMsg = err?.message?.includes("429") ? "Rate limit - waiting..." : "Failed to fetch VCs";
+        const errorMsg = (err instanceof Error && err.message?.includes("429")) ? "Rate limit - waiting..." : "Failed to fetch VCs";
         setAlert({ type: "error", message: errorMsg });
         setTimeout(() => setAlert(null), 3000);
       }
@@ -232,7 +199,7 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
     };
 
     fetchDataSequentially();
-  }, [currentStartupIdea]); // Re-fetch when startup idea changes
+  }, [currentStartupIdea, startupIdea]); // Re-fetch when startup idea changes
 
   const getLoadingMessage = () => {
     switch (currentLoading) {
@@ -465,7 +432,6 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
           vcsData={vcsData}
           cofoundersData={cofoundersData}
           demographicsData={demographicsData}
-          onHeatmapClick={handleHeatmapClick}
         />
       </div>
     </div>

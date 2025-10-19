@@ -39,8 +39,8 @@ const DockContext = createContext<DockContextType>({
   height: 0,
   hovered: false,
   setIsZooming: () => {},
-  zoomLevel: null as any,
-  mouseY: null as any,
+  zoomLevel: null as unknown as MotionValue<number>,
+  mouseY: null as unknown as MotionValue<number>,
   animatingIndexes: [],
   setAnimatingIndexes: () => {},
 })
@@ -249,8 +249,9 @@ export function DockCard({ children, id }: DockCardProps) {
   }
 
   useEffect(() => {
+    const currentTimeout = timeoutRef.current;
     return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
+      if (currentTimeout) clearTimeout(currentTimeout)
     }
   }, [])
 
@@ -262,8 +263,8 @@ export function DockCard({ children, id }: DockCardProps) {
     return val - bounds.y - bounds.height / 2
   })
 
-  let widthSync = useTransform(distance, [-150, 0, 150], [40, 80, 40])
-  let width = useSpring(widthSync, { mass: 0.1, stiffness: 150, damping: 12 })
+  const widthSync = useTransform(distance, [-150, 0, 150], [40, 80, 40])
+  const width = useSpring(widthSync, { mass: 0.1, stiffness: 150, damping: 12 })
 
   return (
     <div className="flex flex-row items-center gap-1" key={id}>
@@ -331,6 +332,7 @@ function useWindowResize(callback: UseWindowResizeCallback) {
   }, [callbackRef])
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function useCallbackRef<T extends (...args: any[]) => any>(callback: T): T {
   const callbackRef = useRef(callback)
 
@@ -347,6 +349,7 @@ interface MousePositionOptions {
 
 export function useMousePosition(
   options: MousePositionOptions = {},
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   deps: readonly any[] = []
 ) {
   const { onChange } = options

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useEffect, useMemo, useRef, useState } from "react"
+import Image from "next/image"
 
 export function OrbInput({ 
   onFocusChange,
@@ -103,10 +104,13 @@ export function OrbInput({
       >
         <div className="relative flex-shrink-0">
           <div className="w-12 h-12 rounded-full overflow-hidden transition-all duration-300 scale-100">
-            <img
+            <Image
               src="https://media.giphy.com/media/26gsuUjoEBmLrNBxC/giphy.gif"
               alt="Animated orb"
               className="w-full h-full object-cover"
+              width={48}
+              height={48}
+              unoptimized
             />
           </div>
         </div>

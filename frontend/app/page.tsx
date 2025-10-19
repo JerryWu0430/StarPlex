@@ -1,24 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import AppPage from "./appPage";
 import InitPage from "./initPage";
-import type { Feature, Point } from "geojson";
 import { StartupProvider, useStartup } from "@/contexts/StartupContext";
 import { useBackgroundAPI } from "@/hooks/useBackgroundAPI";
-
-type AudienceProps = {
-  name: string;
-  area_code?: string;
-  borough?: string;
-  country?: string;
-  description?: string;
-  target_fit?: string;
-  weight?: number;
-  display_name?: string;
-};
-
-type AudienceFeature = Feature<Point, AudienceProps>;
 
 function AppContent() {
   const { startupIdea, setStartupIdea } = useStartup();
@@ -30,8 +16,6 @@ function AppContent() {
   const [initialQuery, setInitialQuery] = useState("");
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [hideInit, setHideInit] = useState(false);
-  const [selectedFeature, setSelectedFeature] = useState<AudienceFeature | null>(null);
-  const [sidebarVisible, setSidebarVisible] = useState(false);
   const [isGeneratingPitchDeck, setIsGeneratingPitchDeck] = useState(false);
 
   const handleEnter = (value: string) => {
@@ -46,32 +30,6 @@ function AppContent() {
     }, 1400); // Hide after transition completes
   };
 
-  const handleHeatmapClick = (feature: AudienceFeature | null) => {
-    if (feature) {
-      // Clicking on a POI - show sidebar
-      setSelectedFeature(feature);
-      setSidebarVisible(true);
-    } else {
-      // Clicking on empty area - hide sidebar
-      setSelectedFeature(null);
-      setSidebarVisible(false);
-    }
-  };
-
-  // Handle escape key to close sidebar
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && sidebarVisible) {
-        setSidebarVisible(false);
-        setSelectedFeature(null);
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [sidebarVisible]);
   const handleGeneratePitchDeck = async () => {
     setIsGeneratingPitchDeck(true);
 

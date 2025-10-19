@@ -39,7 +39,7 @@ function useIsMobile() {
   return isMobile
 }
 
-let gradients = [
+const gradients = [
   "https://products.ls.graphics/mesh-gradients/images/03.-Snowy-Mint_1-p-130x130q80.jpeg",
   "https://products.ls.graphics/mesh-gradients/images/04.-Hopbush_1-p-130x130q80.jpeg",
   "https://products.ls.graphics/mesh-gradients/images/06.-Wisteria-p-130x130q80.jpeg",
@@ -51,15 +51,15 @@ let gradients = [
 ]
 
 export default function DockAnimation() {
-  let openIcons = [
-    <CircleIcon className="h-8 w-8 fill-black stroke-black rounded-full" />,
-    <TriangleIcon className="h-8 w-8 fill-black stroke-black rounded-full" />,
-    <SquareIcon className="h-8 w-8 fill-black stroke-black rounded-full" />,
-    <PentagonIcon className="h-8 w-8 fill-black stroke-black rounded-full" />,
-    <HexagonIcon className="h-8 w-8 fill-black stroke-black rounded-full" />,
-    <OctagonIcon className="h-8 w-8 fill-black stroke-black rounded-full" />,
+  const openIcons = [
+    <CircleIcon key="circle" className="h-8 w-8 fill-black stroke-black rounded-full" />,
+    <TriangleIcon key="triangle" className="h-8 w-8 fill-black stroke-black rounded-full" />,
+    <SquareIcon key="square" className="h-8 w-8 fill-black stroke-black rounded-full" />,
+    <PentagonIcon key="pentagon" className="h-8 w-8 fill-black stroke-black rounded-full" />,
+    <HexagonIcon key="hexagon" className="h-8 w-8 fill-black stroke-black rounded-full" />,
+    <OctagonIcon key="octagon" className="h-8 w-8 fill-black stroke-black rounded-full" />,
     null,
-    <BlocksIcon className="h-8 w-8 fill-black stroke-black rounded-full" />,
+    <BlocksIcon key="blocks" className="h-8 w-8 fill-black stroke-black rounded-full" />,
   ]
 
   const isMobile = useIsMobile()

@@ -11,13 +11,14 @@ async function fetchWithRetry<T>(
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fetchFn();
-    } catch (error: any) {
-      lastError = error;
+    } catch (error) {
+      lastError = error as Error;
 
       // Check if it's a rate limit error (429)
-      const isRateLimit = error?.message?.includes("429") ||
-        error?.message?.includes("rate limit") ||
-        error?.message?.includes("Rate limit");
+      const errorMessage = error instanceof Error ? error.message : '';
+      const isRateLimit = errorMessage.includes("429") ||
+        errorMessage.includes("rate limit") ||
+        errorMessage.includes("Rate limit");
 
       // If it's the last attempt or not a rate limit error, throw
       if (attempt === maxRetries || !isRateLimit) {
@@ -68,7 +69,7 @@ export interface CompetitorResponse {
   total_found: number;
   competitors: Competitor[];
   timestamp: string;
-  summary: any;
+  summary: unknown;
 }
 
 export interface VCResponse {
@@ -78,7 +79,7 @@ export interface VCResponse {
   total_found: number;
   vcs: VC[];
   timestamp: string;
-  summary: any;
+  summary: unknown;
 }
 
 export interface CofounderResponse {
@@ -87,7 +88,7 @@ export interface CofounderResponse {
   total_found: number;
   cofounders: Cofounder[];
   timestamp: string;
-  summary: any;
+  summary: unknown;
 }
 
 export interface ChatMessage {
@@ -209,10 +210,7 @@ export interface TrendsAnalysisResponse {
   region: string;
   keywords: string[];
   google_trends_data: {
-    trends_data: Array<{
-      year: number;
-      [key: string]: any; // For query_sum fields like "healthcare_sum", "medical_sum", etc.
-    }>;
+    trends_data: Array<Record<string, unknown>>;
     queries_analyzed: string[];
     error?: string;
   };
@@ -226,14 +224,11 @@ export interface ComprehensiveMarketAnalysisResponse {
   region: string;
   industry_keywords_extracted: string[];
   google_trends_data: {
-    trends_data: Array<{
-      year: number;
-      [key: string]: any; // For query_sum fields like "healthcare_sum", "medical_sum", etc.
-    }>;
+    trends_data: Array<Record<string, unknown>>;
     queries_analyzed: string[];
     error?: string;
   };
-  comprehensive_analysis: any;
+  comprehensive_analysis: unknown;
   timestamp: string;
   analysis_type: string;
 }
@@ -264,9 +259,9 @@ export async function extractKeywords(userPrompt: string): Promise<KeywordExtrac
       }
 
       return response.json();
-    } catch (error: any) {
+    } catch (error) {
       clearTimeout(timeoutId);
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('Request timed out. Please try again.');
       }
       throw error;
@@ -326,10 +321,10 @@ export async function sendChatMessage(
   businessIdea: string,
   message: string,
   context?: {
-    vcs?: any[];
-    cofounders?: any[];
-    competitors?: any[];
-    demographics?: any;
+    vcs?: unknown[];
+    cofounders?: unknown[];
+    competitors?: unknown[];
+    demographics?: unknown;
   }
 ): Promise<ChatResponse> {
   return fetchWithRetry(async () => {

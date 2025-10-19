@@ -222,14 +222,25 @@ const ScoreDisplay: React.FC<{ score: number; maxScore?: number; label: string; 
 };
 
 // Utility function to transform API response to market stats format
-export const transformMarketAnalysisToStats = (marketAnalysis: any) => {
+export const transformMarketAnalysisToStats = (marketAnalysis: unknown) => {
   if (!marketAnalysis) return null;
 
-  const comprehensive = marketAnalysis.comprehensive_analysis || {};
-  const trendsData = marketAnalysis.google_trends_data?.trends_data || [];
+  const analysis = marketAnalysis as { 
+    comprehensive_analysis?: { 
+      market_cap_estimation?: number; 
+      how_AI_proof_it_is?: number 
+    }; 
+    google_trends_data?: { 
+      trends_data?: Array<Record<string, unknown>> 
+    }; 
+    industry_keywords_extracted?: string[] 
+  };
+
+  const comprehensive = analysis.comprehensive_analysis || {};
+  const trendsData = analysis.google_trends_data?.trends_data || [];
 
   // Transform trend data to the format expected by StatisticsSection
-  const trendData = trendsData.map((item: any) => ({
+  const trendData = trendsData.map((item: Record<string, unknown>) => ({
     period: `${item.year}`,
     value: Object.values(item).find(val => typeof val === 'number') as number || 0
   })).slice(-10); // Get last 10 data points
@@ -238,7 +249,7 @@ export const transformMarketAnalysisToStats = (marketAnalysis: any) => {
     marketCap: comprehensive.market_cap_estimation || 0,
     aiProofScore: comprehensive.how_AI_proof_it_is || 5,
     trendData: trendData,
-    industryKeywords: marketAnalysis.industry_keywords_extracted || []
+    industryKeywords: analysis.industry_keywords_extracted || []
   };
 };
 
@@ -257,7 +268,7 @@ export const sampleMarketStats = {
 };
 
 // Component for displaying market statistics
-const StatisticsSection: React.FC<{ marketStats: any }> = ({ marketStats }) => {
+const StatisticsSection: React.FC<{ marketStats: { marketCap: number; aiProofScore: number; trendData: Array<{ period: string; value: number }>; industryKeywords: string[] } }> = ({ marketStats }) => {
   if (!marketStats) return null;
 
   const formatMarketCap = (value: number) => {
@@ -320,7 +331,7 @@ const StatisticsSection: React.FC<{ marketStats: any }> = ({ marketStats }) => {
             <span className="text-xs font-medium text-gray-300">Market Trends</span>
           </div>
           <div className="space-y-2">
-            {marketStats.trendData.slice(-3).map((point: any, index: number) => (
+            {marketStats.trendData.slice(-3).map((point, index) => (
               <div key={index} className="flex items-center justify-between">
                 <span className="text-xs text-gray-400">{point.period}</span>
                 <div className="flex items-center gap-2">
@@ -346,7 +357,7 @@ const StatisticsSection: React.FC<{ marketStats: any }> = ({ marketStats }) => {
             <span className="text-xs font-medium text-gray-300">Industry Focus</span>
           </div>
           <div className="flex flex-wrap gap-1">
-            {marketStats.industryKeywords.slice(0, 4).map((keyword: string, index: number) => (
+            {marketStats.industryKeywords.slice(0, 4).map((keyword, index) => (
               <span
                 key={index}
                 className="px-2 py-1 text-xs bg-orange-500/20 text-orange-300 rounded-full border border-orange-500/30"

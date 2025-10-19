@@ -22,8 +22,6 @@ type AudienceFeature = Feature<Point, AudienceProps>;
 type AudienceCollection = FeatureCollection<Point, AudienceProps>;
 
 type AudienceMapProps = {
-  /** FastAPI endpoint returning the GeoJSON (FeatureCollection<Point, AudienceProps>) */
-  endpoint?: string;
   /** Optional Mapbox token override (else fallback below) */
   token?: string;
   /** Initial Mapbox style URL (defaults to LIGHT_STYLE = "standard" globe) */
@@ -38,14 +36,12 @@ type AudienceMapProps = {
   showCompetitors?: boolean;
   showDemographics?: boolean;
   showCofounders?: boolean;
-  /** Callback for when a heatmap point is clicked */
-  onHeatmapClick?: (feature: AudienceFeature | null) => void;
   /** Data from API calls */
-  competitorsData?: any;
-  vcsData?: any;
-  cofoundersData?: any;
-  demographicsData?: any;
-  marketAnalysisData?: any;
+  competitorsData?: unknown;
+  vcsData?: unknown;
+  cofoundersData?: unknown;
+  demographicsData?: unknown;
+  marketAnalysisData?: unknown;
 };
 
 /** ---------- Styles ---------- */
@@ -65,7 +61,6 @@ const envToken =
  * AudienceMap
  * ======================================================================= */
 export default function AudienceMap({
-  endpoint = "/audience-map",
   token,
   competitorsData,
   vcsData,
@@ -80,7 +75,6 @@ export default function AudienceMap({
   showCompetitors = true,
   showDemographics = true,
   showCofounders = true,
-  onHeatmapClick,
 }: AudienceMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
@@ -91,10 +85,10 @@ export default function AudienceMap({
   const [styleUrl, setStyleUrl] = useState<string>(initialStyle);
   const [heatmapData, setHeatmapData] = useState<AudienceCollection | null>(null);
   const [sidebarVisible, setSidebarVisible] = useState(false);
-  const [selectedPinData, setSelectedPinData] = useState<any>(null);
+  const [selectedPinData, setSelectedPinData] = useState<unknown>(null);
 
   /** Handle pin click to show sidebar */
-  const handlePinClick = useCallback((pinData: any) => {
+  const handlePinClick = useCallback((pinData: unknown) => {
     setSelectedPinData(pinData);
     setSidebarVisible(true);
   }, []);
@@ -128,7 +122,7 @@ export default function AudienceMap({
   };
 
   /** Load demographics data and update map */
-  const loadDemographicsData = useCallback((data: AudienceCollection) => {
+  const loadDemographicsData = useCallback((data: AudienceCollection, showDemographicsFlag: boolean, marketAnalysis: unknown, handlePinClickFn: (pinData: unknown) => void) => {
     const map = mapRef.current;
     if (!map) return;
 
@@ -151,7 +145,7 @@ export default function AudienceMap({
     markersRef.current = [];
 
     // Add heatmap if demographics enabled
-    if (showDemographics) {
+    if (showDemographicsFlag) {
       // Remove existing heatmap first
       if (map.getLayer("audience-heatmap-layer")) {
         map.removeLayer("audience-heatmap-layer");
@@ -243,17 +237,17 @@ export default function AudienceMap({
                 latitude: feature.geometry.coordinates[1],
                 longitude: feature.geometry.coordinates[0]
               },
-              marketStats: marketAnalysisData ? transformMarketAnalysisToStats(marketAnalysisData) : undefined
+              marketStats: marketAnalysis ? transformMarketAnalysisToStats(marketAnalysis) : undefined
             };
-            handlePinClick(heatmapPinData);
+            handlePinClickFn(heatmapPinData);
           }
         });
       }
     }
-  }, [showDemographics, handlePinClick]);
+  }, []);
 
   /** Add heatmap layer for audience data */
-  const addHeatmapLayer = useCallback(() => {
+  const addHeatmapLayer = useCallback((marketAnalysis: unknown, handlePinClickFn: (pinData: unknown) => void) => {
     const map = mapRef.current;
     if (!map || !heatmapData || !map.getSource("audience-heatmap")) return;
 
@@ -333,13 +327,13 @@ export default function AudienceMap({
               latitude: feature.geometry.coordinates[1],
               longitude: feature.geometry.coordinates[0]
             },
-            marketStats: marketAnalysisData ? transformMarketAnalysisToStats(marketAnalysisData) : undefined
+            marketStats: marketAnalysis ? transformMarketAnalysisToStats(marketAnalysis) : undefined
           };
-          handlePinClick(heatmapPinData);
+          handlePinClickFn(heatmapPinData);
         }
       });
     }
-  }, [heatmapData, handlePinClick]);
+  }, [heatmapData]);
 
   /** Remove heatmap layer */
   const removeHeatmapLayer = useCallback(() => {
@@ -391,7 +385,7 @@ export default function AudienceMap({
       if (!hasComposite) return; // Mapbox "standard" doesn't expose 'composite'; skip to avoid errors
 
       const labelLayerId = (styleObj.layers || []).find(
-        (l: any) => l.type === "symbol" && l.layout?.["text-field"]
+        (l: { type?: string; layout?: Record<string, unknown> }) => l.type === "symbol" && l.layout?.["text-field"]
       )?.id;
 
       if (!map.getLayer("add-3d-buildings")) {
@@ -437,7 +431,7 @@ export default function AudienceMap({
       markersRef.current.forEach((m) => m.addTo(map));
       // Re-add heatmap if demographics enabled and data exists
       if (showDemographics && heatmapData) {
-        addHeatmapLayer();
+        addHeatmapLayer(marketAnalysisData, handlePinClick);
       }
     });
 
@@ -448,7 +442,7 @@ export default function AudienceMap({
 
         // If demographics data is available, load it immediately
         if (demographicsData) {
-          loadDemographicsData(demographicsData);
+          loadDemographicsData(demographicsData as AudienceCollection, showDemographics, marketAnalysisData, handlePinClick);
         }
       } catch (err) {
         console.error("Error in map load:", err);
@@ -491,7 +485,7 @@ export default function AudienceMap({
     try {
 
       // Add VC markers to the map
-      data.vcs.forEach((vc: any) => {
+      (data as { vcs: Array<{ coordinates?: { latitude: number; longitude: number }; name: string; firm: string; location: string; links: string[]; match_score: number; explanation?: unknown }> }).vcs.forEach((vc) => {
         const { coordinates, name, firm, location, links, match_score } = vc;
 
         if (!coordinates?.latitude || !coordinates?.longitude) return;
@@ -569,7 +563,7 @@ export default function AudienceMap({
 
     try {
       // Add competitor markers to the map
-      data.competitors.forEach((competitor: any) => {
+      (data as { competitors: Array<{ coordinates?: { latitude: number; longitude: number }; company_name: string; location: string; links: string[]; date_founded: string; threat_score: number; explanation?: unknown }> }).competitors.forEach((competitor) => {
         const { coordinates, company_name, location, links, date_founded, threat_score } = competitor;
 
         if (!coordinates?.latitude || !coordinates?.longitude) return;
@@ -654,7 +648,7 @@ export default function AudienceMap({
     try {
 
       // Add cofounder markers to the map
-      data.cofounders.forEach((cofounder: any) => {
+      (data as { cofounders: Array<{ coordinates?: { latitude: number; longitude: number }; name: string; location: string; links: string[]; match_score: number; explanation?: unknown }> }).cofounders.forEach((cofounder) => {
         const { coordinates, name, location, links, match_score } = cofounder;
 
         if (!coordinates?.latitude || !coordinates?.longitude) return;
@@ -720,9 +714,9 @@ export default function AudienceMap({
   useEffect(() => {
     if (demographicsData && mapRef.current) {
       console.log("Demographics data received, loading into map:", demographicsData);
-      loadDemographicsData(demographicsData);
+      loadDemographicsData(demographicsData as AudienceCollection, showDemographics, marketAnalysisData, handlePinClick);
     }
-  }, [demographicsData, loadDemographicsData]);
+  }, [demographicsData, showDemographics, marketAnalysisData, handlePinClick, loadDemographicsData]);
 
   /** Handle demographics toggle - show heatmap when demographics is enabled */
   useEffect(() => {
@@ -744,14 +738,14 @@ export default function AudienceMap({
       });
 
       // Add heatmap layer
-      addHeatmapLayer();
+      addHeatmapLayer(marketAnalysisData, handlePinClick);
     } else {
       // When demographics is disabled, remove heatmap and clear all markers
       removeHeatmapLayer();
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
     }
-  }, [showDemographics, heatmapData, addHeatmapLayer, removeHeatmapLayer]);
+  }, [showDemographics, heatmapData, addHeatmapLayer, removeHeatmapLayer, marketAnalysisData, handlePinClick]);
 
   /** Toggle styles using setStyle (no re-init) and preserve globe */
   const handleToggleTheme = () => {
@@ -796,7 +790,7 @@ export default function AudienceMap({
 
       {/* Unified Pin Sidebar */}
       <UnifiedPinSidebar
-        pinData={selectedPinData}
+        pinData={selectedPinData as never}
         isVisible={sidebarVisible}
         onClose={handleSidebarClose}
         position="left"

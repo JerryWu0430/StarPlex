@@ -15,7 +15,6 @@ import {
   ChartConfig,
   ChartContainer,
   ChartTooltip,
-  ChartTooltipContent,
 } from "@/components/ui/chart";
 import { analyzeTrends, type TrendsAnalysisResponse } from "@/lib/api";
 import { useStartup } from "@/contexts/StartupContext";
@@ -34,16 +33,16 @@ function parseLocationToRegion(location: string): string {
 
 // Helper function to transform Google Trends data for chart
 function transformTrendsData(trendsData: TrendsAnalysisResponse['google_trends_data']) {
-  const chartData: Array<{ [key: string]: any }> = [];
+  const chartData: Array<Record<string, unknown>> = [];
   
   // The backend returns data in format: [{year: "2020", "query1_sum": value, "query2_sum": value, ...}, ...]
   const trendsArray = trendsData.trends_data || [];
   
   // Transform each year's data into chart format
-  trendsArray.forEach((yearData: any) => {
-    const dataPoint: { [key: string]: any } = {
+  trendsArray.forEach((yearData: Record<string, unknown>) => {
+    const dataPoint: Record<string, unknown> = {
       year: yearData.year,
-      formattedTime: yearData.year.toString()
+      formattedTime: String(yearData.year)
     };
     
     // Add each query's sum value to the data point
@@ -88,7 +87,7 @@ function generateChartConfig(keywords: string[]): ChartConfig {
 }
 
 // Custom tooltip component that shows only the highlighted line
-const CustomTooltip = ({ active, payload, label, chartConfig }: TooltipProps<any, any> & { chartConfig: ChartConfig }) => {
+const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string> & { chartConfig: ChartConfig }) => {
   if (active && payload && payload.length > 0) {
     return (
       <div className="bg-gray-900/95 backdrop-blur-sm border border-gray-700 rounded-lg p-3 shadow-lg min-w-[200px]">
@@ -136,7 +135,7 @@ function formatMarketCap(value: number): string {
   }
 }
 
-export function MarketAnalysisChart({ location, startupIdea }: MarketAnalysisChartProps) {
+export function MarketAnalysisChart({ location }: MarketAnalysisChartProps) {
   const [data, setData] = useState<TrendsAnalysisResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -228,8 +227,10 @@ export function MarketAnalysisChart({ location, startupIdea }: MarketAnalysisCha
     let count = 0;
     
     chartKeywords.forEach((keyword: string) => {
-      if (firstValue[keyword] && lastValue[keyword]) {
-        totalChange += (lastValue[keyword] - firstValue[keyword]) / firstValue[keyword];
+      const firstVal = firstValue[keyword];
+      const lastVal = lastValue[keyword];
+      if (typeof firstVal === 'number' && typeof lastVal === 'number' && firstVal !== 0) {
+        totalChange += (lastVal - firstVal) / firstVal;
         count++;
       }
     });
