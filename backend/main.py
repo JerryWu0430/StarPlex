@@ -36,6 +36,8 @@ allowed_origins = [
     "http://localhost:3001",
     "http://localhost:4000",
     "http://localhost:5173",
+    "https://starplex-wheat.vercel.app",
+    "https://*.vercel.app"
 ]
 
 # Add production frontend URL if set

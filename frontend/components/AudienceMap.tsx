@@ -369,6 +369,8 @@ export default function AudienceMap({
       antialias: true,
       attributionControl: false,
       logoPosition: 'bottom-right',
+      trackResize: true,
+      collectResourceTiming: false, 
     });
     mapRef.current = map;
 
