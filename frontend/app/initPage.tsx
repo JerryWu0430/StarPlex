@@ -6,6 +6,7 @@ import { Particles } from "@/components/ui/particles"
 import { Globe } from "@/components/ui/globe"
 import { OrbInput } from "@/components/ui/animated-input"
 import { TextShimmer } from "@/components/ui/text-shimmer"
+import { Component } from "@/components/ui/backed"
 
 export default function InitPage({ onEnter }: { onEnter?: (value: string) => void }) {
   const [isInputFocused, setIsInputFocused] = useState(false)
@@ -35,7 +36,7 @@ export default function InitPage({ onEnter }: { onEnter?: (value: string) => voi
               priority
               className="h-22 sm:h-30 md:h-38 w-auto object-contain"
             />
-           <span className="text-white">STAR</span>
+           <span className="text-white ml-2">STAR</span>
            <TextShimmer 
              duration={2}
              className='text-6xl sm:text-8xl md:text-10xl font-light'
@@ -50,7 +51,10 @@ export default function InitPage({ onEnter }: { onEnter?: (value: string) => voi
              PLEX
            </TextShimmer>
          </h1>
+
+         <Component />
       </div>
+
       
       {/* Centered OrbInput - smaller */}
       <div className="absolute inset-0 flex items-center justify-center px-4">
