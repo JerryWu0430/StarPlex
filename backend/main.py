@@ -62,7 +62,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origin_regex=r"https://(.*\.vercel\.app|.*\.starplex\.app|starplex\.app)",
 )
 
 perplexity_client = PerplexityAudienceAnalyzer()
