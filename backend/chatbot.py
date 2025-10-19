@@ -60,7 +60,7 @@ For simple greetings or casual messages, respond warmly and ask how you can help
         
         try:
             response = self.client.chat.completions.create(
-                model="sonar-pro",
+                model="sonar",
                 messages=messages,
                 temperature=0.7,
                 stream=False

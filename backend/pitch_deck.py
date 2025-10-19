@@ -125,7 +125,7 @@ async def generate_pitch_content(client, startup_idea: str) -> dict:
     """
     
     response = await client.chat.completions.create(
-        model="sonar-pro",
+        model="sonar",
         messages=[
             {
                 "role": "system",

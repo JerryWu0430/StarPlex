@@ -36,7 +36,7 @@ class ComprehensiveMarketAnalyzer:
         if self.client:
             await self.client.close()
 
-    async def query_perplexity(self, prompt: str, model: str = "sonar-pro") -> str:
+    async def query_perplexity(self, prompt: str, model: str = "sonar") -> str:
         """Single query to Perplexity Chat"""
         response = await self.client.chat.completions.create(
             model=model,
@@ -74,7 +74,7 @@ Requirements:
 - Make them specific industry keywords (1-2 words each)
 - NO markdown, NO explanations, ONLY the JSON object"""
 
-        response = await self.query_perplexity(prompt, "sonar-pro")
+        response = await self.query_perplexity(prompt, "sonar")
         data = self.extract_json_from_response(response)
         
         if data and "industry_keywords" in data[0]:
@@ -246,7 +246,7 @@ Requirements:
 - All values must be realistic based on actual market research
 - NO markdown, NO explanations, ONLY the JSON object"""
 
-        response = await self.query_perplexity(prompt, "sonar-pro")
+        response = await self.query_perplexity(prompt, "sonar")
         data = self.extract_json_from_response(response)
         
         if data and len(data) > 0:
