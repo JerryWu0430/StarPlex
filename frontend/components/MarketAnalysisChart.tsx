@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { TrendingUp, TrendingDown, Loader2 } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, TooltipProps } from "recharts";
 
@@ -86,26 +87,57 @@ function generateChartConfig(keywords: string[]): ChartConfig {
   return config;
 }
 
-// Custom tooltip component that shows only the highlighted line
+// Custom tooltip component that renders via portal to escape container bounds
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string> & { chartConfig: ChartConfig }) => {
-  if (active && payload && payload.length > 0) {
-    return (
-      <div className="bg-gray-900/95 backdrop-blur-sm border border-gray-700 rounded-lg p-3 shadow-lg min-w-[200px]">
-        <p className="text-white font-medium mb-2">{`Year: ${label}`}</p>
-        {payload.map((entry, index) => (
-          <div key={index} className="flex items-center gap-2 text-sm">
-            <div 
-              className="w-3 h-3 rounded-full" 
-              style={{ backgroundColor: entry.color }}
-            />
-            <span className="text-gray-300">{formatKeyword(String(entry.dataKey || ''))}:</span>
-            <span className="text-white font-medium">{entry.value}</span>
-          </div>
-        ))}
-      </div>
-    );
+  const [mounted, setMounted] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setPosition({ x: e.clientX, y: e.clientY });
+    };
+
+    if (active && mounted) {
+      window.addEventListener('mousemove', handleMouseMove);
+      return () => window.removeEventListener('mousemove', handleMouseMove);
+    }
+  }, [active, mounted]);
+
+  if (!active || !payload || payload.length === 0 || !mounted) {
+    return null;
   }
-  return null;
+
+  const tooltipContent = (
+    <div 
+      className="bg-gray-900/95 backdrop-blur-sm border border-gray-700 rounded-lg p-3 shadow-lg min-w-[200px] pointer-events-none"
+      style={{
+        position: 'fixed',
+        left: `${position.x + 15}px`,
+        top: `${position.y - 10}px`,
+        zIndex: 9999,
+        transform: 'translate(0, -100%)',
+      }}
+    >
+      <p className="text-white font-medium mb-2">{`Year: ${label}`}</p>
+      {payload.map((entry, index) => (
+        <div key={index} className="flex items-center gap-2 text-sm">
+          <div 
+            className="w-3 h-3 rounded-full" 
+            style={{ backgroundColor: entry.color }}
+          />
+          <span className="text-gray-300">{formatKeyword(String(entry.dataKey || ''))}:</span>
+          <span className="text-white font-medium">{entry.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  return createPortal(tooltipContent, document.body);
 };
 
 // Helper function to format keywords with proper spacing
@@ -280,13 +312,7 @@ export function MarketAnalysisChart({ location }: MarketAnalysisChartProps) {
               />
               <ChartTooltip 
                 content={<CustomTooltip chartConfig={chartConfig} />}
-                position={{ x: 200, y: -50 }}
-                allowEscapeViewBox={{ x: true, y: true }}
-                cursor={false}
-                wrapperStyle={{ 
-                  outline: 'none',
-                  zIndex: 1000
-                }}
+                cursor={{ stroke: '#6366f1', strokeWidth: 1, strokeDasharray: '5 5' }}
               />
               <defs>
                 {keywords.map((keyword, index) => (
