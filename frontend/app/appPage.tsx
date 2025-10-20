@@ -338,28 +338,6 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
                     {/* Comet & Perplexity Links */}
                     <div className="w-full max-w-xs space-y-2 pt-1">
                       <a
-                        href="https://comet.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full border p-2.5 shadow-sm bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/30 hover:border-purple-500/50 rounded-lg transition-all duration-200 hover:shadow-md flex items-center gap-2.5 group"
-                      >
-                        <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">☄️</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium leading-tight group-hover:text-purple-400 transition-colors">
-                            Comet
-                          </div>
-                          <div className="text-[10px] text-muted-foreground leading-tight">
-                            Track ML experiments & models
-                          </div>
-                        </div>
-                        <svg className="w-4 h-4 text-muted-foreground group-hover:text-purple-400 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
-
-                      <a
                         href="https://pplx.ai/jerry-wu"
                         target="_blank"
                         rel="noopener noreferrer"
