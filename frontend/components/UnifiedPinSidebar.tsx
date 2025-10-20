@@ -622,8 +622,8 @@ export default function UnifiedPinSidebar({
   isVisible,
   onClose,
   position = "right",
-  width = "400px",
-  className = "",
+  width,
+  className,
 }: UnifiedPinSidebarProps) {
   const [isPinned, setIsPinned] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);

@@ -796,7 +796,7 @@ export default function AudienceMap({
         isVisible={sidebarVisible}
         onClose={handleSidebarClose}
         position="left"
-        width="480px"
+        width="400px"
       />
     </div>
   );
