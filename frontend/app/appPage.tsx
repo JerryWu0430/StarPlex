@@ -302,37 +302,112 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
                   onCheckedChange={setShowVCs}
                 />
                 {onGeneratePitchDeck && (
-                  <div className="w-full max-w-xs">
-                    <button
-                      onClick={() => {
-                        onGeneratePitchDeck();
-                        setIsMobileMenuOpen(false);
-                      }}
-                      disabled={isGeneratingPitchDeck}
-                      className="w-full border p-3 shadow-sm bg-card opacity-90 rounded-lg transition-all duration-200 hover:opacity-100 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
-                    >
-                      <div className="flex-1 flex flex-col gap-1.5 leading-snug text-left">
-                        <div className="text-xs sm:text-sm font-medium leading-snug">
-                          {isGeneratingPitchDeck ? "Generating Pitch Deck..." : "Generate Pitch Deck"}
+                  <>
+                    <div className="w-full max-w-xs">
+                      <button
+                        onClick={() => {
+                          onGeneratePitchDeck();
+                          setIsMobileMenuOpen(false);
+                        }}
+                        disabled={isGeneratingPitchDeck}
+                        className="w-full border p-3 shadow-sm bg-card opacity-90 rounded-lg transition-all duration-200 hover:opacity-100 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3"
+                      >
+                        <div className="flex-1 flex flex-col gap-1.5 leading-snug text-left">
+                          <div className="text-xs sm:text-sm font-medium leading-snug">
+                            {isGeneratingPitchDeck ? "Generating Pitch Deck..." : "Generate Pitch Deck"}
+                          </div>
+                          <div className="text-[10px] sm:text-xs text-muted-foreground leading-normal font-normal">
+                            {isGeneratingPitchDeck
+                              ? "AI is creating your presentation..."
+                              : "Create investor-ready slides with AI"}
+                          </div>
                         </div>
-                        <div className="text-[10px] sm:text-xs text-muted-foreground leading-normal font-normal">
-                          {isGeneratingPitchDeck
-                            ? "AI is creating your presentation..."
-                            : "Create investor-ready slides with AI"}
+                        {isGeneratingPitchDeck ? (
+                          <svg className="animate-spin h-5 w-5 text-primary flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        ) : (
+                          <svg className="h-5 w-5 text-muted-foreground flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                    
+                    {/* Comet & Perplexity Links */}
+                    <div className="w-full max-w-xs space-y-2 pt-1">
+                      <a
+                        href="https://comet.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full border p-2.5 shadow-sm bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/30 hover:border-purple-500/50 rounded-lg transition-all duration-200 hover:shadow-md flex items-center gap-2.5 group"
+                      >
+                        <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
+                          <span className="text-white text-xs font-bold">☄️</span>
                         </div>
-                      </div>
-                      {isGeneratingPitchDeck ? (
-                        <svg className="animate-spin h-5 w-5 text-primary flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium leading-tight group-hover:text-purple-400 transition-colors">
+                            Comet
+                          </div>
+                          <div className="text-[10px] text-muted-foreground leading-tight">
+                            Track ML experiments & models
+                          </div>
+                        </div>
+                        <svg className="w-4 h-4 text-muted-foreground group-hover:text-purple-400 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
-                      ) : (
-                        <svg className="h-5 w-5 text-muted-foreground flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </a>
+
+                      <a
+                        href="https://pplx.ai/jerry-wu"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full border p-2.5 shadow-sm bg-[#22B8CD]/10 border-[#22B8CD]/30 hover:border-[#22B8CD]/50 rounded-lg transition-all duration-200 hover:shadow-md flex items-center gap-2.5 group"
+                      >
+                        <div className="flex-shrink-0 w-8 h-8 bg-black rounded-lg flex items-center justify-center shadow-[0_2px_10px_rgba(0,0,0,0.55)]">
+                          <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
+                            <path d="M19.785 0v7.272H22.5V17.62h-2.935V24l-7.037-6.194v6.145h-1.091v-6.152L4.392 24v-6.465H1.5V7.188h2.884V0l7.053 6.494V.19h1.09v6.49L19.786 0zm-7.257 9.044v7.319l5.946 5.234V14.44l-5.946-5.397zm-1.099-.08l-5.946 5.398v7.235l5.946-5.234V8.965zm8.136 7.58h1.844V8.349H13.46l6.105 5.54v2.655zm-8.982-8.28H2.59v8.195h1.8v-2.576l6.192-5.62zM5.475 2.476v4.71h5.115l-5.115-4.71zm13.219 0l-5.115 4.71h5.115v-4.71z" fill="#22B8CD" fillRule="nonzero" />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium leading-tight group-hover:text-[#22B8CD] transition-colors">
+                            Perplexity Pro
+                          </div>
+                          <div className="text-[10px] text-muted-foreground leading-tight">
+                            12 months free for students
+                          </div>
+                        </div>
+                        <svg className="w-4 h-4 text-muted-foreground group-hover:text-[#22B8CD] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                         </svg>
-                      )}
-                    </button>
-                  </div>
+                      </a>
+
+                      <a
+                        href="https://pplx.ai/jerrywu0430"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full border p-2.5 shadow-sm bg-[#22B8CD]/10 border-[#22B8CD]/30 hover:border-[#22B8CD]/50 rounded-lg transition-all duration-200 hover:shadow-md flex items-center gap-2.5 group"
+                      >
+                        <div className="flex-shrink-0 w-8 h-8 bg-black rounded-lg flex items-center justify-center shadow-[0_2px_10px_rgba(0,0,0,0.55)]">
+                          <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
+                            <path d="M19.785 0v7.272H22.5V17.62h-2.935V24l-7.037-6.194v6.145h-1.091v-6.152L4.392 24v-6.465H1.5V7.188h2.884V0l7.053 6.494V.19h1.09v6.49L19.786 0zm-7.257 9.044v7.319l5.946 5.234V14.44l-5.946-5.397zm-1.099-.08l-5.946 5.398v7.235l5.946-5.234V8.965zm8.136 7.58h1.844V8.349H13.46l6.105 5.54v2.655zm-8.982-8.28H2.59v8.195h1.8v-2.576l6.192-5.62zM5.475 2.476v4.71h5.115l-5.115-4.71zm13.219 0l-5.115 4.71h5.115v-4.71z" fill="#22B8CD" fillRule="nonzero" />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium leading-tight group-hover:text-[#22B8CD] transition-colors">
+                            Perplexity Pro
+                          </div>
+                          <div className="text-[10px] text-muted-foreground leading-tight">
+                            1 month free for anyone
+                          </div>
+                        </div>
+                        <svg className="w-4 h-4 text-muted-foreground group-hover:text-[#22B8CD] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -367,36 +442,89 @@ export default function AppPage({ initialQuery, onGeneratePitchDeck, isGeneratin
           onCheckedChange={setShowVCs}
         />
         {onGeneratePitchDeck && (
-          <div className="w-full max-w-xs">
-            <button
-              onClick={onGeneratePitchDeck}
-              disabled={isGeneratingPitchDeck}
-              className="w-full border p-3 shadow-sm bg-card opacity-90 rounded-lg transition-all duration-200 hover:opacity-100 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-left flex-1">
-                  <div className="text-sm font-medium leading-snug">
-                    {isGeneratingPitchDeck ? "Generating Pitch Deck..." : "Generate Pitch Deck"}
+          <>
+            <div className="w-full max-w-xs">
+              <button
+                onClick={onGeneratePitchDeck}
+                disabled={isGeneratingPitchDeck}
+                className="w-full border p-3 shadow-sm bg-card opacity-90 rounded-lg transition-all duration-200 hover:opacity-100 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-left flex-1">
+                    <div className="text-sm font-medium leading-snug">
+                      {isGeneratingPitchDeck ? "Generating Pitch Deck..." : "Generate Pitch Deck"}
+                    </div>
+                    <div className="text-xs text-muted-foreground leading-normal font-normal">
+                      {isGeneratingPitchDeck
+                        ? "AI is creating your presentation..."
+                        : "Create investor-ready slides with AI"}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground leading-normal font-normal">
-                    {isGeneratingPitchDeck
-                      ? "AI is creating your presentation..."
-                      : "Create investor-ready slides with AI"}
+                  {isGeneratingPitchDeck ? (
+                    <svg className="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  )}
+                </div>
+              </button>
+            </div>
+            
+            {/* Comet & Perplexity Links */}
+            <div className="w-full max-w-xs space-y-2 pt-1">
+              <a
+                href="https://pplx.ai/jerry-wu"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full border p-3 shadow-sm bg-[#22B8CD]/10 border-[#22B8CD]/30 hover:border-[#22B8CD]/50 rounded-lg transition-all duration-200 hover:opacity-100 hover:shadow-md flex items-center gap-3 group"
+              >
+                <div className="flex-shrink-0 w-9 h-9 bg-black rounded-lg flex items-center justify-center shadow-[0_2px_10px_rgba(0,0,0,0.55)]">
+                  <svg viewBox="0 0 24 24" className="w-6 h-6" aria-hidden="true">
+                    <path d="M19.785 0v7.272H22.5V17.62h-2.935V24l-7.037-6.194v6.145h-1.091v-6.152L4.392 24v-6.465H1.5V7.188h2.884V0l7.053 6.494V.19h1.09v6.49L19.786 0zm-7.257 9.044v7.319l5.946 5.234V14.44l-5.946-5.397zm-1.099-.08l-5.946 5.398v7.235l5.946-5.234V8.965zm8.136 7.58h1.844V8.349H13.46l6.105 5.54v2.655zm-8.982-8.28H2.59v8.195h1.8v-2.576l6.192-5.62zM5.475 2.476v4.71h5.115l-5.115-4.71zm13.219 0l-5.115 4.71h5.115v-4.71z" fill="#22B8CD" fillRule="nonzero" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium leading-tight group-hover:text-[#22B8CD] transition-colors">
+                    Perplexity Pro
+                  </div>
+                  <div className="text-xs text-muted-foreground leading-tight">
+                    12 months free for students
                   </div>
                 </div>
-                {isGeneratingPitchDeck ? (
-                  <svg className="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg className="w-4 h-4 text-muted-foreground group-hover:text-[#22B8CD] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+
+              <a
+                href="https://pplx.ai/jerrywu0430"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full border p-3 shadow-sm bg-[#22B8CD]/10 border-[#22B8CD]/30 hover:border-[#22B8CD]/50 rounded-lg transition-all duration-200 hover:opacity-100 hover:shadow-md flex items-center gap-3 group"
+              >
+                <div className="flex-shrink-0 w-9 h-9 bg-black rounded-lg flex items-center justify-center shadow-[0_2px_10px_rgba(0,0,0,0.55)]">
+                  <svg viewBox="0 0 24 24" className="w-6 h-6" aria-hidden="true">
+                    <path d="M19.785 0v7.272H22.5V17.62h-2.935V24l-7.037-6.194v6.145h-1.091v-6.152L4.392 24v-6.465H1.5V7.188h2.884V0l7.053 6.494V.19h1.09v6.49L19.786 0zm-7.257 9.044v7.319l5.946 5.234V14.44l-5.946-5.397zm-1.099-.08l-5.946 5.398v7.235l5.946-5.234V8.965zm8.136 7.58h1.844V8.349H13.46l6.105 5.54v2.655zm-8.982-8.28H2.59v8.195h1.8v-2.576l6.192-5.62zM5.475 2.476v4.71h5.115l-5.115-4.71zm13.219 0l-5.115 4.71h5.115v-4.71z" fill="#22B8CD" fillRule="nonzero" />
                   </svg>
-                ) : (
-                  <svg className="h-5 w-5 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                )}
-              </div>
-            </button>
-          </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium leading-tight group-hover:text-[#22B8CD] transition-colors">
+                    Perplexity Pro
+                  </div>
+                  <div className="text-xs text-muted-foreground leading-tight">
+                    1 month free for anyone
+                  </div>
+                </div>
+                <svg className="w-4 h-4 text-muted-foreground group-hover:text-[#22B8CD] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            </div>
+          </>
         )}
       </div>
 
